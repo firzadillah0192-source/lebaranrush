@@ -1,0 +1,12 @@
+from django.db import models
+from rooms.models import Room
+from players.models import Player
+
+class GameResult(models.Model):
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='results')
+    player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name='results')
+    game_name = models.CharField(max_length=50)
+    points = models.IntegerField(default=0)
+
+    def __str__(self):
+        return f"{self.player.name} - {self.game_name}: {self.points} pts"

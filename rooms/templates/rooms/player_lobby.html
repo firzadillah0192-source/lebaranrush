@@ -1,0 +1,347 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="bg-white p-6 rounded-2xl shadow-xl max-w-md w-full border border-lebaran-100 flex flex-col h-[90vh] md:h-auto md:min-h-[600px]"
+    x-data="playerGame()">
+
+    <!-- Header / Stats -->
+    <div class="flex justify-between items-center mb-4 pb-4 border-b border-gray-100">
+        <div class="flex flex-col">
+            <h1 class="text-xl font-bold text-lebaran-900 truncate">Hi, {{ player.name }}!</h1>
+            <div class="flex items-center gap-2 mt-1">
+                <div
+                    class="bg-yellow-50 text-yellow-700 px-3 py-1 rounded-full text-xs font-black flex items-center gap-1 border border-yellow-200">
+                    🪙 <span x-text="points">0</span>
+                    <button @click="showAddPoints = true"
+                        class="w-4 h-4 bg-yellow-400 text-white rounded-full flex items-center justify-center font-bold hover:bg-yellow-500">+</button>
+                </div>
+                <div class="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-black flex items-center gap-1 border border-blue-200"
+                    x-show="spins > 0">
+                    🎡 <span x-text="spins">0</span> Spins
+                </div>
+            </div>
+        </div>
+        <span class="text-sm bg-lebaran-100 text-lebaran-700 font-bold px-3 py-1 rounded-full self-start">{{ room.code
+            }}</span>
+    </div>
+
+    <!-- Modal: Add Points -->
+    <div x-show="showAddPoints" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+        style="display: none;">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-xs shadow-2xl">
+            <h3 class="text-lg font-black text-gray-800 mb-4">How to earn points?</h3>
+            <p class="text-gray-500 text-sm mb-6">Play games to earn points! Use them to spin the wheel later.</p>
+            <button @click="showAddPoints = false"
+                class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded-xl">Got it!</button>
+        </div>
+    </div>
+
+    <!-- State: Lobby -->
+    <div x-show="gameState === 'LOBBY'" class="flex-1 flex flex-col items-center justify-center py-8">
+        <div class="w-20 h-20 border-4 border-lebaran-200 border-t-lebaran-500 rounded-full animate-spin mx-auto mb-6">
+        </div>
+        <h2 class="text-xl font-bold text-gray-700 text-center">Waiting for Host...</h2>
+    </div>
+
+    <!-- State: Undercover Word Reveal -->
+    <div x-show="gameState === 'UNDERCOVER_WORD'" class="flex-1 flex flex-col items-center justify-center py-8"
+        style="display: none;">
+        <div class="bg-lebaran-50 rounded-xl p-8 text-center border border-lebaran-200 shadow-sm w-full">
+            <p class="text-gray-500 font-medium mb-2">Your Secret Word</p>
+            <h2 class="text-4xl font-black text-lebaran-700 tracking-wider mb-4" x-text="myWord">SECRET</h2>
+            <div class="inline-block bg-white border border-gray-200 px-4 py-2 rounded-full">
+                <span class="font-bold text-gray-500">Memorize it!</span>
+                <span class="ml-2 font-black text-red-500 text-xl" x-text="timeLeft">10</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- State: Undercover Discussion -->
+    <div x-show="gameState === 'UNDERCOVER_DISCUSSION'" class="flex-1 flex flex-col overflow-hidden"
+        style="display: none;">
+        <div class="bg-gray-900 text-white rounded-xl p-3 mb-4 text-center flex justify-between items-center">
+            <span class="font-bold text-sm uppercase text-gray-400">Discussion</span>
+            <div class="text-2xl font-black text-yellow-400">⏱️ <span x-text="timeLeft">30</span></div>
+        </div>
+        <div class="flex-1 overflow-y-auto mb-4 bg-gray-50 rounded-xl p-3 border border-gray-200 flex flex-col space-y-2"
+            id="chat-messages">
+            <template x-for="msg in chatMessages">
+                <div :class="msg.player_id == '{{ player.id }}' ? 'self-end bg-lebaran-500 text-white' : 'self-start bg-white text-gray-700 border border-gray-200'"
+                    class="max-w-[80%] rounded-2xl px-4 py-2 shadow-sm">
+                    <div x-show="msg.player_id != '{{ player.id }}'" class="text-[10px] font-bold opacity-70 mb-1"
+                        x-text="msg.player_name"></div>
+                    <div class="text-sm break-words" x-text="msg.message"></div>
+                </div>
+            </template>
+        </div>
+        <form @submit.prevent="sendChat" class="flex gap-2">
+            <input type="text" x-model="chatInput" placeholder="Send a clue..."
+                class="flex-1 px-4 py-3 rounded-xl border border-gray-300 outline-none">
+            <button type="submit" class="bg-lebaran-500 text-white p-3 rounded-xl">🚀</button>
+        </form>
+    </div>
+
+    <!-- State: Undercover Vote -->
+    <div x-show="gameState === 'UNDERCOVER_VOTE'" class="flex-1 flex flex-col overflow-hidden" style="display: none;">
+        <div class="bg-red-50 p-4 rounded-xl border border-red-200 flex-1 flex flex-col">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="font-black text-red-800 text-lg uppercase">Vote!</h3>
+                <div class="text-2xl font-black text-red-600" x-text="timeLeft">15</div>
+            </div>
+            <div class="space-y-3 flex-1 overflow-y-auto" x-show="!hasVoted">
+                <template x-for="p in players">
+                    <button type="button" x-show="p.id != '{{ player.id }}'" @click="sendVote(p.id)"
+                        class="w-full text-left px-5 py-4 bg-white rounded-xl border-2 border-transparent hover:border-red-400 font-bold text-gray-800 shadow-sm flex items-center justify-between">
+                        <span x-text="p.name"></span>
+                        <div class="w-6 h-6 rounded-full border-2 border-gray-300"></div>
+                    </button>
+                </template>
+            </div>
+            <div x-show="hasVoted" class="flex-1 flex flex-col items-center justify-center">
+                <div class="text-4xl mb-4">✅</div>
+                <h4 class="font-bold text-gray-700">Vote Submitted!</h4>
+            </div>
+        </div>
+    </div>
+
+    <!-- State: Spin Wheel Ready -->
+    <div x-show="gameState === 'SPINWHEEL_READY'" class="flex-1 flex flex-col items-center justify-center py-8"
+        style="display: none;">
+        <div class="text-center w-full">
+            <div class="relative inline-block mb-8">
+                <div
+                    class="w-32 h-32 rounded-full border-8 border-lebaran-100 flex items-center justify-center bg-white shadow-inner">
+                    <span class="text-6xl animate-bounce">🎡</span>
+                </div>
+                <div class="absolute -top-2 -right-2 bg-red-500 text-white text-lg font-black w-10 h-10 rounded-full flex items-center justify-center"
+                    x-text="spins">0</div>
+            </div>
+            <h2 class="text-2xl font-black text-lebaran-900 mb-2 uppercase">Spin Wheel</h2>
+            <div class="space-y-4 pt-4">
+                <button @click="requestSpin" :disabled="spins === 0"
+                    class="w-full bg-lebaran-500 disabled:bg-gray-200 text-white font-black py-5 px-6 rounded-2xl shadow-xl text-xl">🎡
+                    Spin Now!</button>
+                <button @click="exchangePoints" x-show="points >= {{ room.spin_cost_points }}"
+                    class="w-full bg-yellow-50 text-yellow-700 border-2 border-yellow-200 font-bold py-3 px-6 rounded-xl">Exchange
+                    {{ room.spin_cost_points }} pts for 1 Spin</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- State: Spin Wheel Result -->
+    <div x-show="gameState === 'SPINWHEEL_RESULT'"
+        class="flex-1 flex flex-col items-center justify-center py-8 text-center" style="display: none;">
+        <div class="text-6xl mb-6">🎁</div>
+        <h3 class="text-2xl font-black text-gray-800 mb-2">Wheel Result</h3>
+        <p class="text-gray-500">Look at the TV Screen!</p>
+    </div>
+
+    <!-- State: Gacha Pick -->
+    <div x-show="gameState === 'GACHA_PICK'" class="flex-1 flex flex-col overflow-hidden" style="display: none;">
+        <div class="bg-purple-50 p-4 rounded-xl border border-purple-200 flex-1 flex flex-col">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="font-black text-purple-800 text-lg uppercase">Pick a Box!</h3>
+                <div class="text-2xl font-black text-purple-600" x-text="timeLeft">30</div>
+            </div>
+            <div class="grid grid-cols-3 gap-3 flex-1 overflow-y-auto" x-show="!hasPicked">
+                <template x-for="box in boxes">
+                    <button type="button" @click="pickBox(box.id)" :disabled="box.player_id !== null"
+                        :class="box.player_id !== null ? 'opacity-30 grayscale' : 'hover:scale-105'"
+                        class="aspect-square bg-white rounded-2xl border-2 border-purple-200 flex flex-col items-center justify-center p-2 relative overflow-hidden">
+                        <div class="text-3xl mb-1">🎁</div>
+                        <template x-if="box.player_id !== null">
+                            <div class="absolute inset-0 bg-purple-900/50 flex items-center justify-center">
+                                <span class="text-white text-[10px] font-black truncate px-1"
+                                    x-text="box.player_name"></span>
+                            </div>
+                        </template>
+                    </button>
+                </template>
+            </div>
+            <div x-show="hasPicked" class="flex-1 flex flex-col items-center justify-center">
+                <div class="text-4xl mb-4">🎁</div>
+                <h4 class="font-bold text-gray-700">Box Selected!</h4>
+            </div>
+        </div>
+    </div>
+
+    <!-- State: Game Finished -->
+    <div x-show="gameState === 'GAME_FINISHED'"
+        class="flex-1 flex flex-col items-center justify-center py-8 text-center" style="display: none;">
+        <div class="text-center">
+            <template x-if="myRank === 1">
+                <div>
+                    <div class="text-7xl mb-6 animate-bounce">👑</div>
+                    <h2 class="text-3xl font-black text-yellow-600 uppercase">WINNER!</h2>
+                </div>
+            </template>
+            <template x-if="myRank > 1">
+                <div>
+                    <div class="text-6xl mb-6">👏</div>
+                    <h2 class="text-3xl font-black text-lebaran-700 uppercase">WELL PLAYED!</h2>
+                </div>
+            </template>
+            <div class="mt-8 bg-gray-50 rounded-2xl p-6 border-2 border-gray-100 min-w-[200px]">
+                <div class="text-sm font-bold text-gray-400 uppercase tracking-widest mb-1">Your Rank</div>
+                <div class="text-6xl font-black text-gray-900 mb-4">#<span x-text="myRank">?</span></div>
+                <div class="flex justify-center gap-4 text-xs font-bold text-gray-500 uppercase">
+                    <div><span class="text-lebaran-600" x-text="points">0</span> Points</div>
+                    <div class="border-r border-gray-200"></div>
+                    <div><span class="text-blue-600" x-text="spins">0</span> Spins</div>
+                </div>
+            </div>
+            <p class="text-gray-400 text-sm mt-8">Wait for Host to play again...</p>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('playerGame', () => ({
+            gameState: 'LOBBY',
+            points: {{ player.points }},
+        spins: {{ player.spin_count }},
+        showAddPoints: false,
+        myWord: '',
+        chatInput: '',
+        chatMessages: [],
+        players: [],
+        hasVoted: false,
+        hasPicked: false,
+        boxes: [],
+        leaderboard: [],
+        myRank: 0,
+        timeLeft: 0,
+        timerInterval: null,
+        socket: null,
+
+        startLocalTimer(seconds) {
+        clearInterval(this.timerInterval);
+    this.timeLeft = seconds;
+    this.timerInterval = setInterval(() => {
+        this.timeLeft--;
+        if (this.timeLeft <= 0) clearInterval(this.timerInterval);
+    }, 1000);
+            },
+
+    init() {
+        const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
+        this.socket = new WebSocket(wsScheme + '://' + window.location.host + '/ws/room/{{ room.code }}/');
+
+        this.socket.onmessage = (e) => {
+            const data = JSON.parse(e.data);
+            if (data.action === 'game_state_update') {
+                this.gameState = data.state;
+                this.timeLeft = data.timer || 0;
+
+                if (this.gameState === 'UNDERCOVER_WORD') {
+                    this.hasVoted = false;
+                    this.chatMessages = [];
+                    if (data.data?.assignments?.['{{ player.id }}']) {
+                        this.myWord = data.data.assignments['{{ player.id }}'].word;
+                    }
+                }
+
+                if (this.gameState === 'GACHA_SETUP') {
+                    this.hasPicked = false;
+                    this.boxes = [];
+                }
+
+                if (this.gameState === 'GACHA_PICK') {
+                    this.boxes = data.data.boxes || [];
+                    if (this.boxes.find(b => b.player_id === '{{ player.id }}')) this.hasPicked = true;
+                }
+
+                if (this.gameState === 'GAME_FINISHED') {
+                    this.leaderboard = data.data.leaderboard || [];
+                    const me = this.leaderboard.find(e => e.id === '{{ player.id }}');
+                    if (me) {
+                        this.myRank = me.rank;
+                        this.points = me.points;
+                        this.spins = me.spins;
+                    }
+                }
+
+                if (this.gameState === 'LOBBY') {
+                    // Reset if we were in result state
+                    if (this.points > 0 || this.spins > 0) {
+                        this.points = 0;
+                        this.spins = 0;
+                    }
+                    this.hasVoted = false;
+                    this.hasPicked = false;
+                }
+
+                if (this.timeLeft > 0) this.startLocalTimer(this.timeLeft);
+                else clearInterval(this.timerInterval);
+            }
+            else if (data.action === 'chat_message') {
+                this.chatMessages.push({
+                    player_id: data.player_id,
+                    player_name: data.player_name,
+                    message: data.message
+                });
+                setTimeout(() => {
+                    const b = document.getElementById('chat-messages');
+                    if (b) b.scrollTop = b.scrollHeight;
+                }, 50);
+            }
+            else if (data.action === 'player_join') {
+                if (!this.players.find(p => p.id === data.player_id)) {
+                    this.players.push({ id: data.player_id, name: data.player_name });
+                }
+            }
+        };
+
+        {% for p in room.players.all %}
+        this.players.push({ id: "{{ p.id }}", name: "{{ p.name }}" });
+        {% endfor %}
+    },
+
+    requestSpin() {
+        if (this.spins > 0) {
+            this.socket.send(JSON.stringify({
+                action: 'state_transition_request',
+                new_state: 'SPINWHEEL_SPIN',
+                state_data: { player_id: '{{ player.id }}', name: '{{ player.name }}' }
+            }));
+        }
+    },
+
+    exchangePoints() {
+        this.socket.send(JSON.stringify({ action: 'exchange_points_request', player_id: '{{ player.id }}' }));
+    },
+
+    sendChat() {
+        if (!this.chatInput.trim()) return;
+        this.socket.send(JSON.stringify({
+            action: 'chat_message',
+            player_id: '{{ player.id }}',
+            player_name: '{{ player.name }}',
+            message: this.chatInput.trim()
+        }));
+        this.chatInput = '';
+    },
+
+    sendVote(targetId) {
+        if (!this.hasVoted) {
+            this.socket.send(JSON.stringify({ action: 'vote_submit', voter_id: '{{ player.id }}', target_id: targetId }));
+            this.hasVoted = true;
+        }
+    },
+
+    pickBox(boxId) {
+        if (!this.hasPicked) {
+            this.socket.send(JSON.stringify({
+                action: 'state_transition_request',
+                new_state: 'GACHA_PICK',
+                state_data: { box_id: boxId, player_id: '{{ player.id }}', player_name: '{{ player.name }}' }
+            }));
+            this.hasPicked = true;
+        }
+    }
+        }))
+    })
+</script>
+{% endblock %}

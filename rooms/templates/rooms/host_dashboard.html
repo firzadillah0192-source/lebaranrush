@@ -1,0 +1,345 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="bg-white p-8 rounded-2xl shadow-xl max-w-5xl w-full flex flex-col md:flex-row gap-8 min-h-[70vh] border border-lebaran-100"
+    x-data="hostDashboard()">
+    <!-- Left Section: Status & QR -->
+    <div class="flex-1 flex flex-col border-b md:border-b-0 md:border-r border-gray-100 pb-8 md:pb-0 md:pr-8">
+
+        <div class="text-center mb-8">
+            <h2 class="text-4xl font-black text-lebaran-900 mb-2 tracking-tight">Lebaran Rush</h2>
+            <div class="inline-block bg-lebaran-100 px-6 py-2 rounded-xl border border-lebaran-200 mb-2">
+                <span class="text-gray-500 text-sm font-bold mr-2 uppercase tracking-widest">Room</span>
+                <span class="text-3xl font-black text-lebaran-700 tracking-widest leading-none">{{ room.code }}</span>
+            </div>
+            <p class="text-sm text-gray-500">Scan to join!</p>
+        </div>
+
+        <div class="bg-white p-4 rounded-2xl shadow-inner border border-gray-100 flex items-center justify-center mb-6">
+            <img src="{{ qr_code }}" alt="Join QR Code" class="w-56 h-56">
+        </div>
+
+        <!-- Guest Spin Notification Area -->
+        <div x-show="guestSpinMsg" class="mb-6 p-4 bg-purple-50 border-2 border-purple-200 rounded-2xl animate-bounce"
+            style="display: none;">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl">🎁</span>
+                <div>
+                    <div class="font-black text-purple-900 text-sm" x-text="guestSpinMsg"></div>
+                    <div class="text-xs text-purple-600 font-bold" x-text="guestSpinReward"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-auto">
+            <template x-if="gameState === 'LOBBY'">
+                <div class="space-y-3">
+                    <button @click="startGacha"
+                        class="w-full bg-purple-500 hover:bg-purple-600 focus:ring-4 focus:ring-purple-200 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg transform hover:-translate-y-1 mb-3">
+                        🎁 Play Gacha Lebaran
+                    </button>
+                    <button @click="startUndercover"
+                        class="w-full bg-lebaran-500 hover:bg-lebaran-600 focus:ring-4 focus:ring-lebaran-200 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg transform hover:-translate-y-1 mb-3">
+                        ▶ Play Undercover
+                    </button>
+                    <button @click="startSpinWheel"
+                        class="w-full bg-blue-500 hover:bg-blue-600 focus:ring-4 focus:ring-blue-200 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg transform hover:-translate-y-1 mb-3">
+                        🎡 Play Spin Wheel
+                    </button>
+                    <button @click="finishGame"
+                        class="w-full bg-gray-900 hover:bg-black text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg transform hover:-translate-y-1">
+                        🏆 Finish & Show Leaderboard
+                    </button>
+                </div>
+            </template>
+
+            <template x-if="gameState === 'GACHA_PICK'">
+                <button @click="revealGacha"
+                    class="w-full bg-purple-500 hover:bg-purple-600 focus:ring-4 focus:ring-purple-200 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg transform hover:-translate-y-1 mb-3 animate-pulse">
+                    ✨ Reveal All Boxes
+                </button>
+            </template>
+
+            <template x-if="gameState === 'UNDERCOVER_VOTE'">
+                <button @click="revealUndercover"
+                    class="w-full bg-yellow-500 hover:bg-yellow-600 focus:ring-4 focus:ring-yellow-200 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg transform hover:-translate-y-1 mb-3 animate-pulse">
+                    👁️ Reveal Undercover
+                </button>
+            </template>
+
+            <template x-if="gameState === 'GAME_FINISHED'">
+                <button @click="resetToLobby"
+                    class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg transform hover:-translate-y-1">
+                    🔄 Play Again (Reset Scores)
+                </button>
+            </template>
+
+            <div class="text-center text-xs text-gray-400 mt-4 break-all">{{ join_url }}</div>
+        </div>
+    </div>
+
+    <!-- Right Section: Players & Game State -->
+    <div class="flex-1 flex flex-col">
+
+        <!-- Gacha Game States -->
+        <div class="flex-1 flex flex-col" x-show="gameState.startsWith('GACHA_')" style="display: none;">
+            <div class="bg-purple-50 border border-purple-200 rounded-xl p-6 text-center shadow-sm mb-6">
+                <h3 class="text-2xl font-black text-purple-800 mb-1"
+                    x-text="gameState === 'GACHA_REVEAL' ? 'The Boxes are Here!' : (gameState === 'GACHA_SHUFFLE' ? 'Shuffling...' : (gameState === 'GACHA_PICK' ? 'Pick Your Fortune!' : 'Gacha Results!'))">
+                </h3>
+                <p class="text-purple-700 text-sm" x-show="gameState === 'GACHA_PICK'">Players are picking their boxes!
+                </p>
+            </div>
+
+            <div class="grid grid-cols-4 gap-4 flex-1">
+                <template x-for="box in boxes">
+                    <div class="aspect-square bg-white rounded-2xl border-4 border-purple-100 flex flex-col items-center justify-center p-2 shadow-sm transition-all duration-500 relative overflow-hidden"
+                        :class="gameState === 'GACHA_SHUFFLE' ? 'animate-bounce' : (box.player_id ? 'border-purple-500 ring-4 ring-purple-100' : '')">
+                        <div class="text-5xl mb-2" :class="box.revealed ? 'opacity-20' : ''">🎁</div>
+                        <div x-show="box.player_id"
+                            class="absolute bottom-0 inset-x-0 bg-purple-500 text-white text-[10px] font-black py-1 text-center truncate px-1"
+                            x-text="box.player_name"></div>
+                        <div x-show="box.revealed"
+                            class="absolute inset-0 bg-yellow-400 flex flex-col items-center justify-center animate-[pop_0.5s_ease-out]">
+                            <div class="text-3xl mb-1">⭐</div>
+                            <div class="text-[10px] font-black text-yellow-900 leading-tight text-center px-1"
+                                x-text="box.reward.label"></div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+            <div x-show="gameState === 'GACHA_RESULT'" class="mt-6 text-center">
+                <button @click="resetToLobbyPassive"
+                    class="bg-gray-900 text-white px-8 py-3 rounded-xl font-bold hover:bg-black transition-all">
+                    Return to Lobby
+                </button>
+            </div>
+        </div>
+
+        <!-- Game Finished / Leaderboard -->
+        <div class="flex-1 flex flex-col" x-show="gameState === 'GAME_FINISHED'" style="display: none;">
+            <div class="text-center mb-8 animate-bounce">
+                <h3 class="text-5xl font-black text-lebaran-900 mb-2 tracking-widest">FINAL WINNER!</h3>
+                <div class="text-7xl">🏆</div>
+            </div>
+
+            <div class="bg-gray-50 rounded-3xl p-6 border-2 border-gray-100 flex-1 flex flex-col shadow-inner">
+                <h4 class="text-sm font-black text-gray-400 uppercase tracking-widest mb-6 text-center">Grand
+                    Leaderboard</h4>
+                <div class="space-y-4 flex-1 overflow-y-auto pr-2">
+                    <template x-for="(entry, index) in leaderboard">
+                        <div class="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-gray-100 transition-all hover:scale-[1.02]"
+                            :class="index === 0 ? 'border-yellow-400 ring-4 ring-yellow-50 py-6' : ''">
+                            <div class="w-12 h-12 rounded-full flex items-center justify-center font-black text-2xl shadow-md"
+                                :class="index === 0 ? 'bg-yellow-400 text-white' : (index === 1 ? 'bg-gray-300 text-white' : (index === 2 ? 'bg-orange-400 text-white' : 'bg-gray-100 text-gray-400'))"
+                                x-text="entry.rank"></div>
+                            <div class="flex-1">
+                                <div class="font-black text-xl text-gray-800" x-text="entry.name"></div>
+                                <div class="text-xs font-bold text-gray-400 uppercase tracking-wider"
+                                    x-text="entry.spins + ' Spins earned'"></div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-3xl font-black text-lebaran-700" x-text="entry.points"></div>
+                                <div class="text-[10px] font-black text-gray-400 uppercase">Points</div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- Undercover Game States -->
+        <div class="flex-1 flex flex-col" x-show="gameState.startsWith('UNDERCOVER_')" style="display: none;">
+            <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-6 text-center shadow-sm mb-6">
+                <h3 class="text-2xl font-black text-yellow-800 mb-2"
+                    x-text="gameState === 'UNDERCOVER_WORD' ? 'Words Assigned!' : 'Spy is among us!'"></h3>
+                <p class="text-yellow-700">Watch the players carefully.</p>
+            </div>
+        </div>
+
+        <!-- Spin Wheel Game States -->
+        <div class="flex-1 flex flex-col" x-show="gameState.startsWith('SPINWHEEL_')" style="display: none;">
+            <div class="bg-blue-50 border border-blue-200 rounded-xl p-6 text-center shadow-sm mb-6">
+                <h3 class="text-2xl font-black text-blue-800 mb-2"
+                    x-text="gameState === 'SPINWHEEL_READY' ? 'Get Ready to Spin!' : (gameState === 'SPINWHEEL_SPIN' ? 'Spinning!' : 'We Have a Winner!')">
+                </h3>
+            </div>
+            <div class="flex-1 flex items-center justify-center relative min-h-[400px]">
+                <div class="relative w-80 h-80 rounded-full border-4 border-gray-800 shadow-2xl transition-transform duration-[5s] ease-[cubic-bezier(0.1, 0, 0.1, 1)]"
+                    :style="`transform: rotate(${wheelRotation}deg)`"
+                    :class="gameState === 'SPINWHEEL_SPIN' ? 'animate-pulse' : ''">
+                    <svg viewBox="0 0 100 100" class="w-full h-full transform -rotate-90">
+                        <circle cx="50" cy="50" r="50" fill="#f3f4f6" />
+                        <path d="M 50 50 L 100 50 A 50 50 0 0 1 85.3 75 Z" fill="#ef4444" />
+                        <path d="M 50 50 L 85.3 75 A 50 50 0 0 1 50 100 Z" fill="#3b82f6" />
+                        <path d="M 50 50 L 50 100 A 50 50 0 0 1 14.7 75 Z" fill="#22c55e" />
+                        <path d="M 50 50 L 14.7 75 A 50 50 0 0 1 0 50 Z" fill="#eab308" />
+                        <path d="M 50 50 L 0 50 A 50 50 0 0 1 14.7 25 Z" fill="#8b5cf6" />
+                        <path d="M 50 50 L 14.7 25 A 50 50 0 0 1 50 0 Z" fill="#ec4899" />
+                        <path d="M 50 50 L 50 0 A 50 50 0 0 1 85.3 25 Z" fill="#f97316" />
+                        <path d="M 50 50 L 85.3 25 A 50 50 0 0 1 100 50 Z" fill="#06b6d4" />
+                    </svg>
+                </div>
+                <div class="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 text-4xl transform rotate-180">🎈</div>
+                <div x-show="gameState === 'SPINWHEEL_RESULT'"
+                    class="absolute inset-0 bg-white/90 flex flex-col items-center justify-center rounded-2xl">
+                    <div class="text-7xl mb-4">✨</div>
+                    <div class="text-4xl font-black text-gray-900 px-6 py-4 bg-yellow-400 rounded-2xl"
+                        x-text="currentReward"></div>
+                    <button @click="resetToLobbyPassive"
+                        class="mt-8 bg-gray-900 text-white px-8 py-3 rounded-xl font-bold">Back to Lobby</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('hostDashboard', () => ({
+            players: [],
+            gameState: 'waiting',
+            votes: {},
+            voteCounts: {},
+            undercoverId: null,
+            undercoverName: '',
+            revealed: false,
+            socket: null,
+            wheelRotation: 0,
+            currentPlayerName: '',
+            currentReward: '',
+            guestSpinMsg: '',
+            guestSpinReward: '',
+            boxes: [],
+            leaderboard: [],
+
+            init() {
+                {% for p in room.players.all %}
+                this.players.push({ id: "{{ p.id }}", name: "{{ p.name }}" });
+                {% endfor %}
+
+                const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
+                this.socket = new WebSocket(wsScheme + '://' + window.location.host + '/ws/room/{{ room.code }}/');
+
+                this.socket.onmessage = (e) => {
+                    const data = JSON.parse(e.data);
+                    if (data.action === 'game_state_update') {
+                        this.gameState = data.state;
+                        this.timeLeft = data.timer || 0;
+
+                        if (this.gameState === 'GAME_FINISHED') {
+                            this.leaderboard = data.data.leaderboard || [];
+                        }
+
+                        if (this.gameState.startsWith('GACHA_')) {
+                            this.boxes = data.data.boxes || [];
+                        }
+
+                        if (this.gameState === 'SPINWHEEL_SPIN') {
+                            this.currentPlayerName = data.data.name;
+                            this.wheelRotation += 1800 + Math.random() * 360;
+                        }
+
+                        if (this.gameState === 'SPINWHEEL_RESULT') {
+                            this.currentReward = data.data.reward;
+                        }
+                    }
+                    else if (data.action === 'player_join') {
+                        const exists = this.players.find(p => p.id === data.player_id);
+                        if (!exists) {
+                            this.players.push({ id: data.player_id, name: data.player_name });
+                        }
+                    }
+                    else if (data.type === 'guest_spin_start') {
+                        this.guestSpinMsg = `${data.name} is spinning!`;
+                        setTimeout(() => { if (this.guestSpinMsg.includes('spinning')) this.guestSpinMsg = ''; }, 5000);
+                    }
+                    else if (data.type === 'guest_spin_result') {
+                        this.guestSpinMsg = `${data.name} won!`;
+                        this.guestSpinReward = data.reward.label;
+                        setTimeout(() => { this.guestSpinMsg = ''; this.guestSpinReward = ''; }, 7000);
+                    }
+                };
+            },
+
+            startGacha() {
+                this.socket.send(JSON.stringify({ action: 'state_transition_request', new_state: 'GACHA_SETUP' }));
+                setTimeout(() => {
+                    this.socket.send(JSON.stringify({ action: 'state_transition_request', new_state: 'GACHA_REVEAL' }));
+                    setTimeout(() => {
+                        this.socket.send(JSON.stringify({ action: 'state_transition_request', new_state: 'GACHA_SHUFFLE' }));
+                        setTimeout(() => {
+                            this.socket.send(JSON.stringify({ action: 'state_transition_request', new_state: 'GACHA_PICK', timer: 30 }));
+                        }, 3000);
+                    }, 3000);
+                }, 1000);
+            },
+
+            revealGacha() {
+                this.socket.send(JSON.stringify({ action: 'state_transition_request', new_state: 'GACHA_RESULT', force: true }));
+            },
+
+            async startUndercover() {
+                try {
+                    const res = await fetch(`/games/undercover/start/{{ room.code }}/`, {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        this.socket.send(JSON.stringify({
+                            action: 'state_transition_request',
+                            new_state: 'UNDERCOVER_WORD',
+                            state_data: { assignments: data.assignments },
+                            timer: 10
+                        }));
+                    }
+                } catch (e) { console.error(e); }
+            },
+
+            startSpinWheel() {
+                this.socket.send(JSON.stringify({ action: 'state_transition_request', new_state: 'SPINWHEEL_READY' }));
+            },
+
+            finishGame() {
+                this.socket.send(JSON.stringify({ action: 'state_transition_request', new_state: 'GAME_FINISHED' }));
+            },
+
+            resetToLobby() {
+                // This resets the entire game (points/spins)
+                this.socket.send(JSON.stringify({
+                    action: 'state_transition_request',
+                    new_state: 'LOBBY',
+                    force: true,
+                    state_data: { reset: true }
+                }));
+            },
+
+            resetToLobbyPassive() {
+                // Just goes back to lobby without resetting scores
+                this.socket.send(JSON.stringify({
+                    action: 'state_transition_request',
+                    new_state: 'LOBBY',
+                    force: true,
+                    state_data: { reset: false }
+                }));
+            }
+        }))
+    })
+</script>
+
+<style>
+    @keyframes pop {
+        0% {
+            transform: scale(0.5);
+            opacity: 0;
+        }
+
+        100% {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
+</style>
+{% endblock %}
