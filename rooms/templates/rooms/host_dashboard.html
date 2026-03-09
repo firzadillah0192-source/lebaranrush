@@ -1,218 +1,388 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="bg-white p-8 rounded-2xl shadow-xl max-w-5xl w-full flex flex-col md:flex-row gap-8 min-h-[70vh] border border-lebaran-100"
-    x-data="hostDashboard()">
-    <!-- Left Section: Status & QR -->
-    <div class="flex-1 flex flex-col border-b md:border-b-0 md:border-r border-gray-100 pb-8 md:pb-0 md:pr-8">
-
-        <div class="text-center mb-8">
-            <h2 class="text-4xl font-black text-lebaran-900 mb-2 tracking-tight">Lebaran Rush</h2>
-            <div class="inline-block bg-lebaran-100 px-6 py-2 rounded-xl border border-lebaran-200 mb-2">
-                <span class="text-gray-500 text-sm font-bold mr-2 uppercase tracking-widest">Room</span>
-                <span class="text-3xl font-black text-lebaran-700 tracking-widest leading-none">{{ room.code }}</span>
-            </div>
-            <p class="text-sm text-gray-500">Scan to join!</p>
-        </div>
-
-        <div class="bg-white p-4 rounded-2xl shadow-inner border border-gray-100 flex items-center justify-center mb-6">
-            <img src="{{ qr_code }}" alt="Join QR Code" class="w-56 h-56">
-        </div>
-
-        <!-- Guest Spin Notification Area -->
-        <div x-show="guestSpinMsg" class="mb-6 p-4 bg-purple-50 border-2 border-purple-200 rounded-2xl animate-bounce"
-            style="display: none;">
-            <div class="flex items-center gap-3">
-                <span class="text-2xl">🎁</span>
-                <div>
-                    <div class="font-black text-purple-900 text-sm" x-text="guestSpinMsg"></div>
-                    <div class="text-xs text-purple-600 font-bold" x-text="guestSpinReward"></div>
-                </div>
+<div class="h-screen w-full flex overflow-hidden bg-gray-900 text-white font-sans" x-data="hostDashboard()">
+    <!-- LEFT PANEL (30%) - Control & Info -->
+    <div class="w-1/3 bg-gray-800 border-r border-gray-700 flex flex-col p-6 shadow-2xl z-10">
+        <div class="mb-8 text-center">
+            <h1 class="text-3xl font-black text-lebaran-400 tracking-tighter uppercase mb-2">Lebaran Rush</h1>
+            <div class="inline-block bg-gray-900 px-4 py-2 rounded-xl border border-gray-700">
+                <span class="text-gray-500 text-xs font-bold uppercase tracking-widest block mb-1">Room Code</span>
+                <span class="text-4xl font-black text-white tracking-[0.2em] leading-none">{{ room.code }}</span>
             </div>
         </div>
 
-        <div class="mt-auto">
-            <template x-if="gameState === 'LOBBY'">
-                <div class="space-y-3">
-                    <button @click="startGacha"
-                        class="w-full bg-purple-500 hover:bg-purple-600 focus:ring-4 focus:ring-purple-200 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg transform hover:-translate-y-1 mb-3">
-                        🎁 Play Gacha Lebaran
-                    </button>
-                    <button @click="startUndercover"
-                        class="w-full bg-lebaran-500 hover:bg-lebaran-600 focus:ring-4 focus:ring-lebaran-200 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg transform hover:-translate-y-1 mb-3">
-                        ▶ Play Undercover
-                    </button>
-                    <button @click="startSpinWheel"
-                        class="w-full bg-blue-500 hover:bg-blue-600 focus:ring-4 focus:ring-blue-200 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg transform hover:-translate-y-1 mb-3">
-                        🎡 Play Spin Wheel
-                    </button>
-                    <button @click="finishGame"
-                        class="w-full bg-gray-900 hover:bg-black text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg transform hover:-translate-y-1">
-                        🏆 Finish & Show Leaderboard
-                    </button>
-                </div>
-            </template>
-
-            <template x-if="gameState === 'GACHA_PICK'">
-                <button @click="revealGacha"
-                    class="w-full bg-purple-500 hover:bg-purple-600 focus:ring-4 focus:ring-purple-200 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg transform hover:-translate-y-1 mb-3 animate-pulse">
-                    ✨ Reveal All Boxes
-                </button>
-            </template>
-
-            <template x-if="gameState === 'UNDERCOVER_VOTE'">
-                <button @click="revealUndercover"
-                    class="w-full bg-yellow-500 hover:bg-yellow-600 focus:ring-4 focus:ring-yellow-200 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg transform hover:-translate-y-1 mb-3 animate-pulse">
-                    👁️ Reveal Undercover
-                </button>
-            </template>
-
-            <template x-if="gameState === 'GAME_FINISHED'">
-                <button @click="resetToLobby"
-                    class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg transform hover:-translate-y-1">
-                    🔄 Play Again (Reset Scores)
-                </button>
-            </template>
-
-            <div class="text-center text-xs text-gray-400 mt-4 break-all">{{ join_url }}</div>
+        <!-- QR SECTION -->
+        <div
+            class="bg-white p-4 rounded-3xl shadow-lg flex items-center justify-center mb-8 mx-auto w-48 h-48 transform hover:scale-105 transition-transform">
+            <img src="{{ qr_code }}" alt="Join QR Code" class="w-full h-full">
         </div>
-    </div>
 
-    <!-- Right Section: Players & Game State -->
-    <div class="flex-1 flex flex-col">
-
-        <!-- Gacha Game States -->
-        <div class="flex-1 flex flex-col" x-show="gameState.startsWith('GACHA_')" style="display: none;">
-            <div class="bg-purple-50 border border-purple-200 rounded-xl p-6 text-center shadow-sm mb-6">
-                <h3 class="text-2xl font-black text-purple-800 mb-1"
-                    x-text="gameState === 'GACHA_REVEAL' ? 'The Boxes are Here!' : (gameState === 'GACHA_SHUFFLE' ? 'Shuffling...' : (gameState === 'GACHA_PICK' ? 'Pick Your Fortune!' : 'Gacha Results!'))">
-                </h3>
-                <p class="text-purple-700 text-sm" x-show="gameState === 'GACHA_PICK'">Players are picking their boxes!
-                </p>
+        <!-- PLAYER LIST -->
+        <div class="flex-1 flex flex-col min-h-0">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xs font-black text-gray-500 uppercase tracking-widest">Players Joined</h3>
+                <span class="bg-lebaran-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold"
+                    x-text="players.length">0</span>
             </div>
-
-            <div class="grid grid-cols-4 gap-4 flex-1">
-                <template x-for="box in boxes">
-                    <div class="aspect-square bg-white rounded-2xl border-4 border-purple-100 flex flex-col items-center justify-center p-2 shadow-sm transition-all duration-500 relative overflow-hidden"
-                        :class="gameState === 'GACHA_SHUFFLE' ? 'animate-bounce' : (box.player_id ? 'border-purple-500 ring-4 ring-purple-100' : '')">
-                        <div class="text-5xl mb-2" :class="box.revealed ? 'opacity-20' : ''">🎁</div>
-                        <div x-show="box.player_id"
-                            class="absolute bottom-0 inset-x-0 bg-purple-500 text-white text-[10px] font-black py-1 text-center truncate px-1"
-                            x-text="box.player_name"></div>
-                        <div x-show="box.revealed"
-                            class="absolute inset-0 bg-yellow-400 flex flex-col items-center justify-center animate-[pop_0.5s_ease-out]">
-                            <div class="text-3xl mb-1">⭐</div>
-                            <div class="text-[10px] font-black text-yellow-900 leading-tight text-center px-1"
-                                x-text="box.reward.label"></div>
+            <div class="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                <template x-for="p in players" :key="p.id">
+                    <div
+                        class="bg-gray-700/50 p-3 rounded-xl border border-gray-600/50 flex items-center justify-between group hover:bg-gray-700 transition-all">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-lebaran-400 to-lebaran-600 flex items-center justify-center font-black text-xs text-white"
+                                x-text="p.name[0]"></div>
+                            <span class="font-bold text-sm" x-text="p.name"></span>
+                        </div>
+                        <!-- Activity Indicator -->
+                        <div x-show="isPlayerActive(p.id)"
+                            class="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-xs animate-bounce">
+                            ✓
                         </div>
                     </div>
                 </template>
             </div>
-            <div x-show="gameState === 'GACHA_RESULT'" class="mt-6 text-center">
+        </div>
+
+        <!-- GLOBAL CONTROLS -->
+        <div class="mt-8 space-y-3">
+            <template x-if="gameState === 'LOBBY'">
+                <div class="grid grid-cols-1 gap-3">
+                    <button @click="openGachaConfig"
+                        class="w-full text-white font-black py-4 px-6 rounded-2xl transition-all shadow-lg transform hover:-translate-y-1 active:scale-95 text-lg uppercase tracking-wider bg-purple-600 hover:bg-purple-700">🎁
+                        Gacha
+                        Setup</button>
+                    <button @click="startUndercover"
+                        class="w-full text-white font-black py-4 px-6 rounded-2xl transition-all shadow-lg transform hover:-translate-y-1 active:scale-95 text-lg uppercase tracking-wider bg-lebaran-600 hover:bg-lebaran-700">▶
+                        Undercover</button>
+                    <button @click="startSpinWheel"
+                        class="w-full text-white font-black py-4 px-6 rounded-2xl transition-all shadow-lg transform hover:-translate-y-1 active:scale-95 text-lg uppercase tracking-wider bg-blue-600 hover:bg-blue-700">🎡
+                        Spin
+                        Wheel</button>
+                    <button @click="finishGame"
+                        class="w-full text-white font-black py-4 px-6 rounded-2xl transition-all shadow-lg transform hover:-translate-y-1 active:scale-95 text-lg uppercase tracking-wider bg-gray-700 hover:bg-black">🏆
+                        Finished</button>
+                </div>
+            </template>
+
+            <template x-if="gameState !== 'LOBBY' && gameState !== 'GAME_FINISHED'">
                 <button @click="resetToLobbyPassive"
-                    class="bg-gray-900 text-white px-8 py-3 rounded-xl font-bold hover:bg-black transition-all">
-                    Return to Lobby
+                    class="w-full py-3 bg-red-900/30 text-red-400 border border-red-900/50 rounded-xl font-bold text-xs uppercase hover:bg-red-900/50 transition-all">
+                    Cancel & Return to Lobby
                 </button>
-            </div>
+            </template>
+
+            <template x-if="gameState === 'GAME_FINISHED'">
+                <button @click="resetToLobby" class="game-btn bg-green-600 hover:bg-green-700">🔄 New
+                    Tournament</button>
+            </template>
+        </div>
+    </div>
+
+    <!-- RIGHT PANEL (70%) - Stage Area -->
+    <div class="flex-1 relative flex flex-col bg-gray-900">
+        <!-- Background Ambient -->
+        <div class="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
+            <div class="absolute -top-24 -right-24 w-96 h-96 bg-lebaran-500 rounded-full blur-[120px]"></div>
+            <div class="absolute -bottom-24 -left-24 w-96 h-96 bg-purple-600 rounded-full blur-[120px]"></div>
         </div>
 
-        <!-- Game Finished / Leaderboard -->
-        <div class="flex-1 flex flex-col" x-show="gameState === 'GAME_FINISHED'" style="display: none;">
-            <div class="text-center mb-8 animate-bounce">
-                <h3 class="text-5xl font-black text-lebaran-900 mb-2 tracking-widest">FINAL WINNER!</h3>
-                <div class="text-7xl">🏆</div>
+        <div class="relative z-10 flex-1 flex flex-col p-12">
+            <!-- STAGE HEADER -->
+            <div class="text-center mb-12">
+                <div x-show="gameState === 'LOBBY'" class="animate-pulse">
+                    <h2 class="text-5xl font-black mb-4">WAITING FOR FAMILY...</h2>
+                    <p class="text-gray-400 text-xl">Grab your snacks and scan the code to join the rush!</p>
+                </div>
+
+                <h2 x-show="gameState !== 'LOBBY'"
+                    class="text-6xl font-black uppercase tracking-widest text-white drop-shadow-2xl"
+                    x-text="getStageTitle()"></h2>
+                <p x-show="gameState !== 'LOBBY'" class="text-lebaran-400 text-2xl font-bold mt-2"
+                    x-text="getStageSubtext()"></p>
             </div>
 
-            <div class="bg-gray-50 rounded-3xl p-6 border-2 border-gray-100 flex-1 flex flex-col shadow-inner">
-                <h4 class="text-sm font-black text-gray-400 uppercase tracking-widest mb-6 text-center">Grand
-                    Leaderboard</h4>
-                <div class="space-y-4 flex-1 overflow-y-auto pr-2">
-                    <template x-for="(entry, index) in leaderboard">
-                        <div class="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-gray-100 transition-all hover:scale-[1.02]"
-                            :class="index === 0 ? 'border-yellow-400 ring-4 ring-yellow-50 py-6' : ''">
-                            <div class="w-12 h-12 rounded-full flex items-center justify-center font-black text-2xl shadow-md"
-                                :class="index === 0 ? 'bg-yellow-400 text-white' : (index === 1 ? 'bg-gray-300 text-white' : (index === 2 ? 'bg-orange-400 text-white' : 'bg-gray-100 text-gray-400'))"
-                                x-text="entry.rank"></div>
-                            <div class="flex-1">
-                                <div class="font-black text-xl text-gray-800" x-text="entry.name"></div>
-                                <div class="text-xs font-bold text-gray-400 uppercase tracking-wider"
-                                    x-text="entry.spins + ' Spins earned'"></div>
-                            </div>
-                            <div class="text-right">
-                                <div class="text-3xl font-black text-lebaran-700" x-text="entry.points"></div>
-                                <div class="text-[10px] font-black text-gray-400 uppercase">Points</div>
-                            </div>
+            <!-- MAIN ACTION AREA -->
+            <div class="flex-1 flex items-center justify-center">
+
+                <!-- Gacha: Config -->
+                <div x-show="gameState === 'GACHA_CONFIG'"
+                    class="w-full max-w-2xl bg-gray-800 p-10 rounded-3xl border-2 border-purple-500/50 shadow-2xl">
+                    <h3 class="text-3xl font-black mb-8 text-center text-purple-400">GACHA CONFIGURATION</h3>
+                    <div class="grid grid-cols-2 gap-8 mb-10">
+                        <div class="space-y-4">
+                            <label class="block text-sm font-bold text-gray-400 uppercase">Total Boxes</label>
+                            <input type="number" x-model="gachaConfig.box_count"
+                                class="w-full bg-gray-900 border border-gray-700 p-4 rounded-xl text-2xl font-black text-white focus:border-purple-500 outline-none">
                         </div>
-                    </template>
+                        <div class="space-y-4">
+                            <label class="block text-sm font-bold text-gray-400 uppercase">Zonk Count</label>
+                            <input type="number" x-model="gachaConfig.zonk_count"
+                                class="w-full bg-gray-900 border border-gray-700 p-4 rounded-xl text-2xl font-black text-white focus:border-purple-500 outline-none">
+                        </div>
+                    </div>
+                    <div class="mb-10">
+                        <label class="block text-sm font-bold text-gray-400 uppercase mb-4">Special Items</label>
+                        <div class="grid grid-cols-3 gap-3">
+                            <template x-for="item in availableSpecials">
+                                <button @click="toggleSpecial(item.id)"
+                                    :class="gachaConfig.special_items.includes(item.id) ? 'bg-purple-600 border-purple-400 shadow-lg' : 'bg-gray-700 border-gray-600 opacity-50'"
+                                    class="p-3 rounded-xl border-2 font-bold text-xs transition-all flex flex-col items-center gap-1">
+                                    <span class="text-xl" x-text="item.icon"></span>
+                                    <span x-text="item.name"></span>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+                    <button @click="submitGachaConfig"
+                        class="w-full bg-purple-500 hover:bg-purple-600 py-6 rounded-2xl text-2xl font-black shadow-xl transform active:scale-95 transition-all">
+                        GENERATE BOXES ✨
+                    </button>
+                </div>
+
+                <!-- Gacha: Grid Area (Reveal, Shuffle, Pick, Result) -->
+                <div x-show="gameState.startsWith('GACHA_') && gameState !== 'GACHA_CONFIG'"
+                    class="w-full flex flex-col items-center">
+                    <div class="grid gap-6 auto-rows-fr" :class="getGridCols()" :style="`width: ${getGridWidth()}%`">
+                        <template x-for="(box, index) in boxes" :key="box.id">
+                            <div class="box-container transition-all" :class="isShuffling ? 'animate-shuffle' : ''"
+                                :style="getBoxStyle(index)">
+                                <div class="relative w-full aspect-square bg-gray-800 rounded-2xl border-4 shadow-xl flex items-center justify-center p-4 transition-all duration-700 preserve-3d"
+                                    :class="getBoxBorderClass(box)">
+
+                                    <!-- Back (Box Lid) -->
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center bg-gray-800 rounded-xl"
+                                        x-show="!isRevealed(box)">
+                                        <span class="text-6xl mb-2 drop-shadow-lg">🎁</span>
+                                        <div x-show="box.player_id"
+                                            class="absolute inset-0 bg-purple-600/80 flex items-center justify-center rounded-xl animate-pulse">
+                                            <span class="text-xl font-black text-white px-2 text-center"
+                                                x-text="box.player_name"></span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Front (Reward) -->
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center p-4 text-center rounded-xl bg-gradient-to-br"
+                                        :class="getRewardBg(box)" x-show="isRevealed(box)">
+                                        <div class="text-5xl mb-2" x-text="getRewardIcon(box)"></div>
+                                        <div class="text-sm font-black text-white leading-tight uppercase"
+                                            x-text="box.reward.label"></div>
+
+                                        <!-- Effect Description -->
+                                        <div x-show="box.effect_desc"
+                                            class="mt-2 bg-white text-purple-900 px-2 py-1 rounded text-[10px] font-black animate-bounce">
+                                            <span x-text="box.effect_desc"></span>
+                                        </div>
+
+                                        <div x-show="gameState === 'GACHA_RESULT' && box.player_id"
+                                            class="mt-4 bg-white/20 px-3 py-1 rounded-full text-[10px] font-bold">
+                                            Winner: <span x-text="box.player_name"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Sequential Gacha Controls -->
+                    <div class="mt-12 flex gap-4">
+                        <template x-if="gameState === 'GACHA_REVEAL'">
+                            <button @click="startShuffle"
+                                class="text-white font-black py-5 px-10 rounded-2xl transition-all shadow-2xl transform hover:scale-105 active:scale-95 text-2xl uppercase tracking-widest bg-purple-600">🌀
+                                SHUFFLE BOXES</button>
+                        </template>
+                        <template x-if="gameState === 'GACHA_SHUFFLE'">
+                            <button @click="startPicking"
+                                class="text-white font-black py-5 px-10 rounded-2xl transition-all shadow-2xl transform hover:scale-105 active:scale-95 text-2xl uppercase tracking-widest bg-yellow-500">👉
+                                START PLAYER PICK</button>
+                        </template>
+                        <template x-if="gameState === 'GACHA_PICK'">
+                            <button @click="revealResults" :disabled="!isEveryoneDone()"
+                                :class="!isEveryoneDone() ? 'opacity-50 cursor-not-allowed' : ''"
+                                class="text-white font-black py-5 px-10 rounded-2xl transition-all shadow-2xl transform hover:scale-105 active:scale-95 text-2xl uppercase tracking-widest bg-green-500">✨
+                                REVEAL RESULTS</button>
+                        </template>
+                        <template x-if="gameState === 'GACHA_RESULT'">
+                            <button @click="resetToLobbyPassive"
+                                class="text-white font-black py-5 px-10 rounded-2xl transition-all shadow-2xl transform hover:scale-105 active:scale-95 text-2xl uppercase tracking-widest bg-gray-700">BACK
+                                TO LOBBY</button>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Undercover: Word Reveal -->
+                <div x-show="gameState === 'UNDERCOVER_WORD'" class="text-center">
+                    <div class="inline-block bg-lebaran-500/20 p-8 rounded-full border-4 border-lebaran-500 mb-8">
+                        <span class="text-8xl">🤫</span>
+                    </div>
+                    <h3 class="text-4xl font-black mb-4">MEMORIZE YOUR WORDS</h3>
+                    <p class="text-gray-400 text-xl">Check your phones! The game starts in <span x-text="timeLeft"
+                            class="text-white font-black"></span>s...</p>
+                </div>
+
+                <!-- Undercover: Discussion -->
+                <div x-show="gameState === 'UNDERCOVER_DISCUSSION'" class="text-center w-full max-w-4xl">
+                    <div
+                        class="bg-gray-800 p-12 rounded-3xl border-2 border-lebaran-500/50 shadow-2xl relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-2 bg-gray-700">
+                            <div class="h-full bg-lebaran-500 transition-all duration-1000"
+                                :style="`width: ${(timeLeft/60)*100}%`"></div>
+                        </div>
+                        <h3 class="text-5xl font-black mb-8 text-lebaran-400 uppercase">Discussion Phase</h3>
+                        <p class="text-2xl text-gray-300 leading-relaxed mb-8">Describe your word without giving it
+                            away! Find the spy before time runs out.</p>
+                        <div class="text-8xl font-black text-white" x-text="timeLeft"></div>
+
+                        <div class="mt-12">
+                            <button @click="startVote"
+                                class="text-white font-black py-5 px-10 rounded-2xl transition-all shadow-2xl transform hover:scale-105 active:scale-95 text-2xl uppercase tracking-widest bg-red-600">🛑
+                                STOP & VOTE NOW</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Undercover: Vote/Result -->
+                <div x-show="gameState === 'UNDERCOVER_VOTE' || gameState === 'UNDERCOVER_RESULT'"
+                    class="text-center w-full max-w-4xl">
+                    <div class="bg-gray-800 p-12 rounded-3xl border-2 border-red-500/50 shadow-2xl">
+                        <h3 class="text-5xl font-black mb-12 text-red-500 uppercase"
+                            x-text="gameState === 'UNDERCOVER_VOTE' ? 'VOTING IN PROGRESS' : 'VOTING RESULTS'"></h3>
+
+                        <div class="grid grid-cols-2 gap-6">
+                            <template x-for="p in players" :key="p.id">
+                                <div
+                                    class="bg-gray-900 p-6 rounded-2xl border-2 border-gray-700 flex items-center justify-between">
+                                    <span class="text-xl font-bold" x-text="p.name"></span>
+                                    <div class="flex items-center gap-2">
+                                        <div x-show="gameState === 'UNDERCOVER_VOTE'" class="w-4 h-4 rounded-full"
+                                            :class="isPlayerActive(p.id) ? 'bg-green-500 animate-pulse' : 'bg-gray-700'">
+                                        </div>
+                                        <div x-show="gameState === 'UNDERCOVER_RESULT'"
+                                            class="bg-red-500 text-white px-3 py-1 rounded-full font-black text-xl"
+                                            x-text="getVoteCount(p.id)">0</div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+
+                        <div class="mt-12" x-show="gameState === 'UNDERCOVER_RESULT'">
+                            <button @click="resetToLobbyPassive"
+                                class="text-white font-black py-5 px-10 rounded-2xl transition-all shadow-2xl transform hover:scale-105 active:scale-95 text-2xl uppercase tracking-widest bg-gray-700">CONTINUE
+                                TO LOBBY</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Spin Wheel -->
+                <div x-show="gameState === 'SPINWHEEL_READY' || gameState === 'SPINWHEEL_SPIN' || gameState === 'SPINWHEEL_RESULT'"
+                    class="text-center">
+                    <div class="relative inline-block mb-12">
+                        <div
+                            class="w-80 h-80 rounded-full border-[12px] border-blue-500/30 flex items-center justify-center bg-gray-800 shadow-2xl overflow-hidden relative">
+                            <div class="absolute inset-0 bg-gradient-to-tr from-blue-500/10 to-transparent"></div>
+                            <span class="text-[120px] transition-all duration-[5000ms] ease-out-expo"
+                                :class="gameState === 'SPINWHEEL_SPIN' ? 'rotate-[1800deg]' : ''">🎡</span>
+                        </div>
+                        <div
+                            class="absolute -top-4 -right-4 bg-red-600 text-white px-6 py-2 rounded-full font-black text-2xl shadow-xl animate-bounce">
+                            SPIN TIME!
+                        </div>
+                    </div>
+
+                    <div x-show="gameState === 'SPINWHEEL_RESULT' && wheelResult" class="animate-bounce">
+                        <div class="bg-blue-600 text-white p-8 rounded-3xl shadow-2xl border-4 border-white/20">
+                            <h4 class="text-2xl font-bold opacity-70 uppercase tracking-widest mb-2">You Won</h4>
+                            <div class="text-6xl font-black italic mb-2" x-text="wheelResult.label"></div>
+                            <p class="text-xl font-bold text-blue-200" x-text="wheelResult.player_name"></p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- TIMER FOOTER -->
+            <div x-show="timeLeft > 0" class="absolute bottom-12 left-1/2 -translate-x-1/2">
+                <div
+                    class="bg-gray-800 px-8 py-4 rounded-full border-4 border-lebaran-500 shadow-2xl flex items-center gap-4">
+                    <span class="text-4xl">⏱️</span>
+                    <span class="text-6xl font-black tracking-tighter" x-text="timeLeft">30</span>
                 </div>
             </div>
         </div>
-
-        <!-- Undercover Game States -->
-        <div class="flex-1 flex flex-col" x-show="gameState.startsWith('UNDERCOVER_')" style="display: none;">
-            <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-6 text-center shadow-sm mb-6">
-                <h3 class="text-2xl font-black text-yellow-800 mb-2"
-                    x-text="gameState === 'UNDERCOVER_WORD' ? 'Words Assigned!' : 'Spy is among us!'"></h3>
-                <p class="text-yellow-700">Watch the players carefully.</p>
-            </div>
-        </div>
-
-        <!-- Spin Wheel Game States -->
-        <div class="flex-1 flex flex-col" x-show="gameState.startsWith('SPINWHEEL_')" style="display: none;">
-            <div class="bg-blue-50 border border-blue-200 rounded-xl p-6 text-center shadow-sm mb-6">
-                <h3 class="text-2xl font-black text-blue-800 mb-2"
-                    x-text="gameState === 'SPINWHEEL_READY' ? 'Get Ready to Spin!' : (gameState === 'SPINWHEEL_SPIN' ? 'Spinning!' : 'We Have a Winner!')">
-                </h3>
-            </div>
-            <div class="flex-1 flex items-center justify-center relative min-h-[400px]">
-                <div class="relative w-80 h-80 rounded-full border-4 border-gray-800 shadow-2xl transition-transform duration-[5s] ease-[cubic-bezier(0.1, 0, 0.1, 1)]"
-                    :style="`transform: rotate(${wheelRotation}deg)`"
-                    :class="gameState === 'SPINWHEEL_SPIN' ? 'animate-pulse' : ''">
-                    <svg viewBox="0 0 100 100" class="w-full h-full transform -rotate-90">
-                        <circle cx="50" cy="50" r="50" fill="#f3f4f6" />
-                        <path d="M 50 50 L 100 50 A 50 50 0 0 1 85.3 75 Z" fill="#ef4444" />
-                        <path d="M 50 50 L 85.3 75 A 50 50 0 0 1 50 100 Z" fill="#3b82f6" />
-                        <path d="M 50 50 L 50 100 A 50 50 0 0 1 14.7 75 Z" fill="#22c55e" />
-                        <path d="M 50 50 L 14.7 75 A 50 50 0 0 1 0 50 Z" fill="#eab308" />
-                        <path d="M 50 50 L 0 50 A 50 50 0 0 1 14.7 25 Z" fill="#8b5cf6" />
-                        <path d="M 50 50 L 14.7 25 A 50 50 0 0 1 50 0 Z" fill="#ec4899" />
-                        <path d="M 50 50 L 50 0 A 50 50 0 0 1 85.3 25 Z" fill="#f97316" />
-                        <path d="M 50 50 L 85.3 25 A 50 50 0 0 1 100 50 Z" fill="#06b6d4" />
-                    </svg>
-                </div>
-                <div class="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 text-4xl transform rotate-180">🎈</div>
-                <div x-show="gameState === 'SPINWHEEL_RESULT'"
-                    class="absolute inset-0 bg-white/90 flex flex-col items-center justify-center rounded-2xl">
-                    <div class="text-7xl mb-4">✨</div>
-                    <div class="text-4xl font-black text-gray-900 px-6 py-4 bg-yellow-400 rounded-2xl"
-                        x-text="currentReward"></div>
-                    <button @click="resetToLobbyPassive"
-                        class="mt-8 bg-gray-900 text-white px-8 py-3 rounded-xl font-bold">Back to Lobby</button>
-                </div>
-            </div>
-        </div>
-
     </div>
 </div>
+
+<style>
+    .preserve-3d {
+        transform-style: preserve-3d;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #4b5563;
+        border-radius: 10px;
+    }
+
+    @keyframes shuffle {
+
+        0%,
+        100% {
+            transform: translate(0, 0) rotate(0);
+        }
+
+        25% {
+            transform: translate(150px, -50px) rotate(15deg);
+        }
+
+        50% {
+            transform: translate(-150px, 50px) rotate(-15deg);
+        }
+
+        75% {
+            transform: translate(50px, -150px) rotate(5deg);
+        }
+    }
+
+    .animate-shuffle {
+        animation: shuffle 0.4s infinite;
+    }
+</style>
 
 <script>
     document.addEventListener('alpine:init', () => {
         Alpine.data('hostDashboard', () => ({
+            gameState: 'LOBBY',
             players: [],
-            gameState: 'waiting',
-            votes: {},
-            voteCounts: {},
-            undercoverId: null,
-            undercoverName: '',
-            revealed: false,
-            socket: null,
-            wheelRotation: 0,
-            currentPlayerName: '',
-            currentReward: '',
-            guestSpinMsg: '',
-            guestSpinReward: '',
             boxes: [],
             leaderboard: [],
+            timeLeft: 0,
+            socket: null,
+            timerInterval: null,
+            isShuffling: false,
+
+            votes: {},
+            wheelResult: null,
+
+            // Gacha Config
+            gachaConfig: {
+                box_count: 12,
+                zonk_count: 3,
+                special_items: ['steal', 'jackpot_spin']
+            },
+            availableSpecials: [
+                { id: 'steal', name: 'Steal', icon: '🕵️' },
+                { id: 'shield', name: 'Shield', icon: '🛡️' },
+                { id: 'swap', name: 'Swap', icon: '🔄' },
+                { id: 'double', name: 'Double', icon: '✖️' },
+                { id: 'jackpot_spin', name: 'Jackpot', icon: '🎢' },
+            ],
 
             init() {
                 {% for p in room.players.all %}
@@ -227,59 +397,148 @@
                     if (data.action === 'game_state_update') {
                         this.gameState = data.state;
                         this.timeLeft = data.timer || 0;
-
-                        if (this.gameState === 'GAME_FINISHED') {
-                            this.leaderboard = data.data.leaderboard || [];
+                        if (data.data?.boxes) this.boxes = data.data.boxes;
+                        if (data.data?.votes) this.votes = data.data.votes;
+                        if (data.data?.reward) {
+                            this.wheelResult = {
+                                label: data.data.reward.label,
+                                player_name: data.data.player_name || 'Someone'
+                            };
                         }
-
-                        if (this.gameState.startsWith('GACHA_')) {
-                            this.boxes = data.data.boxes || [];
+                        if (this.gameState === 'GACHA_SHUFFLE') {
+                            this.isShuffling = true;
+                        } else {
+                            this.isShuffling = false;
                         }
-
-                        if (this.gameState === 'SPINWHEEL_SPIN') {
-                            this.currentPlayerName = data.data.name;
-                            this.wheelRotation += 1800 + Math.random() * 360;
-                        }
-
-                        if (this.gameState === 'SPINWHEEL_RESULT') {
-                            this.currentReward = data.data.reward;
-                        }
+                        if (this.timeLeft > 0) this.startLocalTimer(this.timeLeft);
                     }
                     else if (data.action === 'player_join') {
-                        const exists = this.players.find(p => p.id === data.player_id);
-                        if (!exists) {
+                        if (!this.players.find(p => p.id === data.player_id)) {
                             this.players.push({ id: data.player_id, name: data.player_name });
                         }
-                    }
-                    else if (data.type === 'guest_spin_start') {
-                        this.guestSpinMsg = `${data.name} is spinning!`;
-                        setTimeout(() => { if (this.guestSpinMsg.includes('spinning')) this.guestSpinMsg = ''; }, 5000);
-                    }
-                    else if (data.type === 'guest_spin_result') {
-                        this.guestSpinMsg = `${data.name} won!`;
-                        this.guestSpinReward = data.reward.label;
-                        setTimeout(() => { this.guestSpinMsg = ''; this.guestSpinReward = ''; }, 7000);
                     }
                 };
             },
 
-            startGacha() {
-                this.socket.send(JSON.stringify({ action: 'state_transition_request', new_state: 'GACHA_SETUP' }));
-                setTimeout(() => {
-                    this.socket.send(JSON.stringify({ action: 'state_transition_request', new_state: 'GACHA_REVEAL' }));
-                    setTimeout(() => {
-                        this.socket.send(JSON.stringify({ action: 'state_transition_request', new_state: 'GACHA_SHUFFLE' }));
-                        setTimeout(() => {
-                            this.socket.send(JSON.stringify({ action: 'state_transition_request', new_state: 'GACHA_PICK', timer: 30 }));
-                        }, 3000);
-                    }, 3000);
+            startLocalTimer(seconds) {
+                clearInterval(this.timerInterval);
+                this.timerInterval = setInterval(() => {
+                    this.timeLeft--;
+                    if (this.timeLeft <= 0) clearInterval(this.timerInterval);
                 }, 1000);
             },
 
-            revealGacha() {
+            // UI Helpers
+            getStageTitle() {
+                const titles = {
+                    'GACHA_CONFIG': 'SETUP THE GAME',
+                    'GACHA_REVEAL': 'MEMORIZE THE PRIZES!',
+                    'GACHA_SHUFFLE': 'SHUFFLING...',
+                    'GACHA_PICK': 'PICK YOUR FORTUNE!',
+                    'GACHA_RESULT': 'GACHA REVEAL!',
+                    'UNDERCOVER_WORD': 'HIDDEN WORDS',
+                    'UNDERCOVER_VOTE': 'TRUST NO ONE',
+                    'GAME_FINISHED': 'TOURNAMENT OVER'
+                };
+                return titles[this.gameState] || this.gameState;
+            },
+
+            getStageSubtext() {
+                if (this.gameState === 'GACHA_REVEAL') return "Don't blink! The boxes will hide soon.";
+                if (this.gameState === 'GACHA_PICK') return "Waiting for all players to pick their box...";
+                if (this.gameState === 'UNDERCOVER_VOTE') return "The spy is among us. Who is it?";
+                return "";
+            },
+
+            getGridCols() {
+                const count = this.boxes.length;
+                if (count <= 8) return 'grid-cols-4';
+                if (count <= 12) return 'grid-cols-4';
+                return 'grid-cols-6';
+            },
+
+            getGridWidth() {
+                const count = this.boxes.length;
+                return count > 12 ? 100 : 80;
+            },
+
+            getBoxStyle(index) {
+                if (this.isShuffling) {
+                    return `animation-delay: ${index * 50}ms`;
+                }
+                return '';
+            },
+
+            getBoxBorderClass(box) {
+                if (box.player_id) return 'border-purple-500 ring-8 ring-purple-500/30 bg-purple-900/20';
+                return 'border-gray-700';
+            },
+
+            isRevealed(box) {
+                return this.gameState === 'GACHA_REVEAL' || this.gameState === 'GACHA_RESULT';
+            },
+
+            getRewardBg(box) {
+                const type = box.reward.type;
+                if (type === 'points') return 'from-yellow-400 to-orange-500';
+                if (type === 'spins') return 'from-blue-400 to-blue-600';
+                if (type === 'special') return 'from-purple-500 to-indigo-600';
+                if (type === 'zonk') return 'from-red-500 to-red-800';
+                return 'from-gray-500 to-gray-700';
+            },
+
+            getRewardIcon(box) {
+                const type = box.reward.type;
+                if (type === 'points') return '🪙';
+                if (type === 'spins') return '🎡';
+                if (type === 'special') return '✨';
+                if (type === 'zonk') return '💥';
+                return '🎁';
+            },
+
+            isPlayerActive(id) {
+                if (this.gameState === 'GACHA_PICK') {
+                    return this.boxes.some(b => b.player_id === id);
+                }
+                return false;
+            },
+
+            isEveryoneDone() {
+                const actives = this.players.length;
+                const picks = this.boxes.filter(b => b.player_id).length;
+                return picks >= actives;
+            },
+
+            // Navigation / Actions
+            startVote() { this.socket.send(JSON.stringify({ action: 'state_transition_request', new_state: 'UNDERCOVER_VOTE', timer: 15 })); },
+            getVoteCount(id) { return this.votes ? (this.votes[id] || 0) : 0; },
+            openGachaConfig() { this.gameState = 'GACHA_CONFIG'; },
+            toggleSpecial(id) {
+                if (this.gachaConfig.special_items.includes(id)) {
+                    this.gachaConfig.special_items = this.gachaConfig.special_items.filter(x => x !== id);
+                } else {
+                    this.gachaConfig.special_items.push(id);
+                }
+            },
+            submitGachaConfig() {
+                this.socket.send(JSON.stringify({
+                    action: 'state_transition_request',
+                    new_state: 'GACHA_REVEAL',
+                    state_data: this.gachaConfig,
+                    timer: 5
+                }));
+            },
+            startShuffle() {
+                this.socket.send(JSON.stringify({ action: 'state_transition_request', new_state: 'GACHA_SHUFFLE', force: true }));
+            },
+            startPicking() {
+                this.socket.send(JSON.stringify({ action: 'state_transition_request', new_state: 'GACHA_PICK', timer: 30, force: true }));
+            },
+            revealResults() {
                 this.socket.send(JSON.stringify({ action: 'state_transition_request', new_state: 'GACHA_RESULT', force: true }));
             },
 
+            // Legacy / Undercover / etc.
             async startUndercover() {
                 try {
                     const res = await fetch(`/games/undercover/start/{{ room.code }}/`, {
@@ -297,49 +556,11 @@
                     }
                 } catch (e) { console.error(e); }
             },
-
-            startSpinWheel() {
-                this.socket.send(JSON.stringify({ action: 'state_transition_request', new_state: 'SPINWHEEL_READY' }));
-            },
-
-            finishGame() {
-                this.socket.send(JSON.stringify({ action: 'state_transition_request', new_state: 'GAME_FINISHED' }));
-            },
-
-            resetToLobby() {
-                // This resets the entire game (points/spins)
-                this.socket.send(JSON.stringify({
-                    action: 'state_transition_request',
-                    new_state: 'LOBBY',
-                    force: true,
-                    state_data: { reset: true }
-                }));
-            },
-
-            resetToLobbyPassive() {
-                // Just goes back to lobby without resetting scores
-                this.socket.send(JSON.stringify({
-                    action: 'state_transition_request',
-                    new_state: 'LOBBY',
-                    force: true,
-                    state_data: { reset: false }
-                }));
-            }
+            startSpinWheel() { this.socket.send(JSON.stringify({ action: 'state_transition_request', new_state: 'SPINWHEEL_READY' })); },
+            finishGame() { this.socket.send(JSON.stringify({ action: 'state_transition_request', new_state: 'GAME_FINISHED' })); },
+            resetToLobby() { this.socket.send(JSON.stringify({ action: 'state_transition_request', new_state: 'LOBBY', force: true, state_data: { reset: true } })); },
+            resetToLobbyPassive() { this.socket.send(JSON.stringify({ action: 'state_transition_request', new_state: 'LOBBY', force: true, state_data: { reset: false } })); }
         }))
-    })
+    });
 </script>
-
-<style>
-    @keyframes pop {
-        0% {
-            transform: scale(0.5);
-            opacity: 0;
-        }
-
-        100% {
-            transform: scale(1);
-            opacity: 1;
-        }
-    }
-</style>
 {% endblock %}

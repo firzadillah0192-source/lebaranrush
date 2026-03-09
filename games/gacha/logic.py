@@ -1,41 +1,49 @@
 import random
 
-def generate_gacha_boxes(player_count):
+def generate_gacha_boxes_v2(box_count, zonk_count, special_items):
     """
-    Generate a list of boxes with hidden rewards.
-    Each box is a dict: {'id': int, 'reward': dict, 'player_id': None}
+    Generate boxes based on host configuration.
     """
-    # Define reward pool
-    # 60% Points (5-20)
-    # 30% Spins (1-3)
-    # 10% Jackpot (50 points or 5 spins)
-    
-    box_count = max(player_count + 2, 8) # At least 8 boxes or players+2
     boxes = []
     
-    for i in range(box_count):
-        r = random.random()
-        if r < 0.10:
-            # Jackpot
-            if random.random() < 0.5:
-                reward = {'type': 'points', 'amount': 50, 'label': '💰 JACKPOT 50 PTS'}
-            else:
-                reward = {'type': 'spins', 'amount': 5, 'label': '🎡 JACKPOT 5 SPINS'}
-        elif r < 0.40:
-            # Spins
+    # 1. Add Special Items
+    for item in special_items:
+        if len(boxes) >= box_count: break
+        label_map = {
+            'steal': '🕵️ STEAL POINTS',
+            'shield': '🛡️ SHIELD (NO ZONK)',
+            'swap': '🔄 SWAP POINTS',
+            'double': '✖️ DOUBLE POINTS',
+            'jackpot_spin': '🎢 10 SPINS JACKPOT'
+        }
+        boxes.append({
+            'id': len(boxes),
+            'reward': {'type': 'special', 'item': item, 'label': label_map.get(item, item.replace('_', ' ').upper())},
+            'player_id': None, 'player_name': None, 'revealed': False
+        })
+
+    # 2. Add Zonks
+    for _ in range(zonk_count):
+        if len(boxes) >= box_count: break
+        boxes.append({
+            'id': len(boxes),
+            'reward': {'type': 'zonk', 'amount': 0, 'label': '💥 ZONK! (0 PKT)'},
+            'player_id': None, 'player_name': None, 'revealed': False
+        })
+
+    # 3. Fill the rest with Points and Spins
+    while len(boxes) < box_count:
+        if random.random() < 0.2:
             amount = random.randint(1, 3)
             reward = {'type': 'spins', 'amount': amount, 'label': f'🎡 {amount} Spins'}
         else:
-            # Points
             amount = random.choice([5, 10, 15, 20])
             reward = {'type': 'points', 'amount': amount, 'label': f'🪙 {amount} Points'}
             
         boxes.append({
-            'id': i,
+            'id': len(boxes),
             'reward': reward,
-            'player_id': None,
-            'player_name': None,
-            'revealed': False
+            'player_id': None, 'player_name': None, 'revealed': False
         })
         
     random.shuffle(boxes)

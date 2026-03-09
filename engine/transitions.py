@@ -1,10 +1,10 @@
 from .state_manager import update_game_state
 
 VALID_TRANSITIONS = {
-    'LOBBY': ['GACHA_SETUP', 'UNDERCOVER_WORD', 'SPINWHEEL_READY', 'GAME_FINISHED'],
+    'LOBBY': ['GACHA_CONFIG', 'UNDERCOVER_WORD', 'SPINWHEEL_READY', 'GAME_FINISHED'],
     
-    # Gacha flow
-    'GACHA_SETUP': ['GACHA_REVEAL'],
+    # Gacha flow (Refined)
+    'GACHA_CONFIG': ['GACHA_REVEAL'],
     'GACHA_REVEAL': ['GACHA_SHUFFLE'],
     'GACHA_SHUFFLE': ['GACHA_PICK'],
     'GACHA_PICK': ['GACHA_RESULT'],
@@ -63,18 +63,17 @@ def transition_to(room_code, new_state, state_data=None, timer=None, force=False
             except Player.DoesNotExist:
                 return False, "Player not found"
 
-    elif new_state == 'GACHA_SETUP':
-        # Initialize boxes for the room
-        from games.gacha.logic import generate_gacha_boxes
-        from rooms.models import Room
-        try:
-            room = Room.objects.get(code=room_code)
-            player_count = room.players.count()
-            boxes = generate_gacha_boxes(player_count)
-            state_data = state_data or {}
-            state_data['boxes'] = boxes
-        except Room.DoesNotExist:
-            return False, "Room not found"
+    elif new_state == 'GACHA_REVEAL':
+        # Generate boxes based on config from previous state (CONFIG)
+        from games.gacha.logic import generate_gacha_boxes_v2
+        config = state_data or {} # Config passed by host
+        boxes = generate_gacha_boxes_v2(
+            config.get('box_count', 12),
+            config.get('zonk_count', 2),
+            config.get('special_items', [])
+        )
+        state_data = {'boxes': boxes, 'config': config}
+        timer = 5 # Reveal for 5s as requested
 
     elif new_state == 'GACHA_PICK':
         # Handle a player picking a box
@@ -99,16 +98,56 @@ def transition_to(room_code, new_state, state_data=None, timer=None, force=False
     elif new_state == 'GACHA_RESULT':
         # Apply rewards to players when transitioning to result
         from players.models import Player
+        import random
+        
         boxes = current_gs.state_data.get('boxes', [])
+        all_players = list(Player.objects.filter(room__code=room_code))
+        
         for box in boxes:
             if box['player_id']:
                 try:
                     p = Player.objects.get(id=box['player_id'])
                     reward = box['reward']
+                    
                     if reward['type'] == 'points':
                         p.points += reward['amount']
                     elif reward['type'] == 'spins':
                         p.spin_count += reward['amount']
+                    elif reward['type'] == 'zonk':
+                        p.points = max(0, p.points - 10) # Small penalty instead of reset
+                    elif reward['type'] == 'special':
+                        item = reward['item']
+                        if item == 'steal':
+                            # Steal 15 from random opponent
+                            rivals = Player.objects.filter(room__code=room_code).exclude(id=p.id)
+                            opponents_with_points = [r for r in rivals if r.points >= 15]
+                            if opponents_with_points:
+                                victim = random.choice(opponents_with_points)
+                                victim.points -= 15
+                                victim.save()
+                                p.points += 15
+                                box['effect_desc'] = f"Stole 15 pts from {victim.name}!"
+                        elif item == 'swap':
+                            # Swap with highest
+                            rivals = Player.objects.filter(room__code=room_code).exclude(id=p.id)
+                            if rivals:
+                                richest = max(rivals, key=lambda x: x.points)
+                                if richest.points > p.points:
+                                    # Refresh p to get latest points (in case they were stolen from/to)
+                                    p.refresh_from_db()
+                                    p.points, richest.points = richest.points, p.points
+                                    richest.save()
+                                    box['effect_desc'] = f"Swapped points with {richest.name}!"
+                        elif item == 'double':
+                            p.points *= 2
+                            box['effect_desc'] = "Points Doubled!"
+                        elif item == 'shield':
+                            p.points += 25
+                            box['effect_desc'] = "Safe Prize: 25 Points"
+                        elif item == 'jackpot_spin':
+                            p.spin_count += 10
+                            box['effect_desc'] = "10 BONUS SPINS!"
+                            
                     p.save()
                     box['revealed'] = True
                 except Player.DoesNotExist:
