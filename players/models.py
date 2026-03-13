@@ -6,6 +6,7 @@ class Player(models.Model):
     STATUS_CHOICES = (
         ('active', 'Active'),
         ('disconnected', 'Disconnected'),
+        ('eliminated', 'Eliminated'),
     )
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -16,6 +17,12 @@ class Player(models.Model):
     points = models.IntegerField(default=0)
     spin_count = models.IntegerField(default=0)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    shield_count = models.IntegerField(default=0)
+    swap_count = models.IntegerField(default=0)
+    double_next_round = models.BooleanField(default=False)
+    pending_ability = models.CharField(max_length=50, blank=True, null=True)
+    snack_count = models.IntegerField(default=0)
+    jackpot_count = models.IntegerField(default=0)
 
     def __str__(self):
         return self.name

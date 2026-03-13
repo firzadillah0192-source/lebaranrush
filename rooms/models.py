@@ -29,14 +29,38 @@ class Room(models.Model):
     def __str__(self):
         return f"Room {self.code}"
 
+class GameSession(models.Model):
+    game_id = models.CharField(max_length=255, unique=True)
+    game_type = models.CharField(max_length=50, default='gacha')
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='sessions')
+    current_round = models.IntegerField(default=1)
+
+    def __str__(self):
+        return f"Session {self.game_id} for Room {self.room.code}"
+
+class RoundState(models.Model):
+    game_session = models.ForeignKey(GameSession, on_delete=models.CASCADE, related_name='rounds')
+    round_number = models.IntegerField()
+    box_state = models.JSONField(default=dict)
+    picks = models.JSONField(default=dict)
+    abilities = models.JSONField(default=dict)
+    eliminations = models.JSONField(default=list)
+
+    class Meta:
+        unique_together = ('game_session', 'round_number')
+
+    def __str__(self):
+        return f"Round {self.round_number} for Session {self.game_session.game_id}"
+
 class GameState(models.Model):
     STATE_CHOICES = (
         ('LOBBY', 'Lobby'),
         # Gacha States
-        ('GACHA_SETUP', 'Gacha Setup'),
+        ('GACHA_CONFIG', 'Gacha Config'),
         ('GACHA_REVEAL', 'Gacha Reveal'),
         ('GACHA_SHUFFLE', 'Gacha Shuffle'),
         ('GACHA_PICK', 'Gacha Pick'),
+        ('GACHA_INTERACT', 'Gacha Interaction'),
         ('GACHA_RESULT', 'Gacha Result'),
         # Undercover States
         ('UNDERCOVER_WORD', 'Undercover Word Reveal'),

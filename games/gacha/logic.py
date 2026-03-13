@@ -48,3 +48,49 @@ def generate_gacha_boxes_v2(box_count, zonk_count, special_items):
         
     random.shuffle(boxes)
     return boxes
+def process_manual_boxes(manual_config):
+    """
+    Convert a list of types from the host into full box objects.
+    manual_config: List of dicts e.g. [{"type": "snack"}, {"type": "zonk"}, {"type": "custom", "reward": "Car"}]
+    """
+    boxes = []
+    label_map = {
+        'snack': '🍿 SNACK REWARD',
+        'zonk': '💥 ZONK! (ELIMINATED)',
+        'steal': '🕵️ STEAL POINTS',
+        'shield': '🛡️ SHIELD (SAFE)',
+        'swap': '🔄 SWAP POINTS',
+        'double': '✖️ DOUBLE POINTS',
+        'jackpot': '🎡 JACKPOT SPINS',
+        'custom': '🎁'
+    }
+
+    for i, item in enumerate(manual_config):
+        itype = item.get('type')
+        reward = {}
+        
+        if itype == 'custom':
+            # Support "prize" type as per user request if necessary, but keep structure
+            name = item.get('reward', 'SPECIAL PRIZE')
+            reward = {'type': 'prize', 'name': name, 'label': f"🎁 {name}"}
+        elif itype == 'snack':
+            name = item.get('reward', '').strip()
+            label = f"🍿 {name}" if name else label_map['snack']
+            reward = {'type': 'snack', 'amount': 1, 'label': label, 'name': name}
+        elif itype == 'zonk':
+            reward = {'type': 'zonk', 'amount': 0, 'label': label_map['zonk']}
+        elif itype == 'jackpot':
+            reward = {'type': 'special', 'item': 'jackpot_spin', 'label': label_map['jackpot']}
+        else:
+            # Direct mapping for steal, swap, double, shield
+            reward = {'type': 'special', 'item': itype, 'label': label_map.get(itype, itype.upper())}
+
+        boxes.append({
+            'id': i,
+            'reward': reward,
+            'player_id': None,
+            'player_name': None,
+            'revealed': False
+        })
+    
+    return boxes
