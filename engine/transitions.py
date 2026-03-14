@@ -10,23 +10,28 @@ VALID_TRANSITIONS = {
     'GACHA_REVEAL': ['GACHA_SHUFFLE'],
     'GACHA_SHUFFLE': ['GACHA_PICK'],
     'GACHA_PICK': ['GACHA_RESULT'],
-    'GACHA_RESULT': ['GACHA_POWERUP', 'LOBBY', 'SPINWHEEL_READY', 'GACHA_CONFIG'],
-    'GACHA_POWERUP': ['GACHA_CONFIG', 'LOBBY'],
+    'GACHA_RESULT': ['GACHA_POWERUP', 'LOBBY', 'SPINWHEEL_READY', 'GACHA_CONFIG', 'GAME_FINISHED'],
+    'GACHA_POWERUP': ['GACHA_CONFIG', 'LOBBY', 'GAME_FINISHED'],
     
     # Undercover flow
     'UNDERCOVER_WORD': ['UNDERCOVER_DISCUSSION'],
     'UNDERCOVER_DISCUSSION': ['UNDERCOVER_VOTE'],
     'UNDERCOVER_VOTE': ['UNDERCOVER_RESULT'],
-    'UNDERCOVER_RESULT': ['LOBBY', 'SPINWHEEL_READY'],
+    'UNDERCOVER_RESULT': ['LOBBY', 'SPINWHEEL_READY', 'GAME_FINISHED'],
     
     # Spin Wheel flow
     'SPINWHEEL_READY': ['SPINWHEEL_SPIN'],
     'SPINWHEEL_SPIN': ['SPINWHEEL_RESULT'],
-    'SPINWHEEL_RESULT': ['LOBBY', 'GACHA_CONFIG', 'UNDERCOVER_WORD', 'SPINWHEEL_READY'],
+    'SPINWHEEL_RESULT': ['LOBBY', 'GACHA_CONFIG', 'UNDERCOVER_WORD', 'SPINWHEEL_READY', 'GAME_FINISHED'],
     
     # End state
     'GAME_FINISHED': []
 }
+
+# Undercover Constants
+UNDERCOVER_REVEAL_TIMER = 30
+UNDERCOVER_DISCUSSION_TIMER = 60
+UNDERCOVER_VOTE_TIMER = 60
 
 def transition_to(room_code, new_state, state_data=None, timer=None, force=False):
     """
@@ -286,33 +291,27 @@ def transition_to(room_code, new_state, state_data=None, timer=None, force=False
                 return False, "You are eliminated and cannot pick."
                 
             reward = box['reward']
+            
+            # --- AUTO-SHIELD PROTECTION ---
+            if reward.get('type') == 'zonk' and p.shield_count > 0:
+                p.shield_count -= 1
+                p.save()
+                # Transform reward to safe
+                reward = {'type': 'safe', 'label': '🛡️ SHIELD SAVED YOU!', 'amount': 0}
+                box['reward'] = reward
+                box['effect_desc'] = "Shield Auto-Used!"
+
             is_powerup_ability = False
             
-            # Check if this reward should be deferred to Power-Up phase
-            if reward.get('type') == 'zonk' and p.shield_count > 0:
-                # Zonk + has shield → defer to powerup
-                is_powerup_ability = True
-                box['powerup'] = 'shield'
-            elif reward.get('type') == 'zonk':
-                # Zonk without shield → immediate elimination
-                apply_box_reward(p, box, room_code)
-                box['revealed'] = True
-                pick_event['event_type'] = 'player_eliminated'
-                pick_event['reward'] = reward
-            elif reward.get('type') == 'special' and reward.get('item') in ('steal', 'swap', 'double'):
-                # Special abilities → defer to powerup
+            # Identify if this box contains a power-up ability
+            if reward.get('type') == 'special' and reward.get('item') in ('steal', 'swap', 'double'):
                 is_powerup_ability = True
                 box['powerup'] = reward['item']
-            else:
-                # Regular rewards (points, snacks, spins, shield, jackpot) → apply immediately
-                apply_box_reward(p, box, room_code)
-                pick_event['reward'] = reward
-                box['revealed'] = True
-
-            if is_powerup_ability:
-                box['revealed'] = False
-                pick_event['event_type'] = 'powerup_pending'
-                pick_event['reward'] = reward
+            
+            # DO NOT apply rewards immediately. Finalization happens after the Power-Up phase.
+            box['revealed'] = not is_powerup_ability
+            pick_event['reward'] = reward if not is_powerup_ability else None
+            pick_event['event_type'] = 'powerup_pending' if is_powerup_ability else 'prize_won'
                 
         except Player.DoesNotExist:
             pass
@@ -346,24 +345,27 @@ def transition_to(room_code, new_state, state_data=None, timer=None, force=False
         # NO auto-assignment. Players who have not picked simply do not receive a box.
         # (This block intentionally left empty — no assign_random_box / assign_zonk.)
 
-        # Apply remaining basic rewards (skip powerup abilities)
+        # --- STAGE ROUND REWARDS ---
+        # rewards are held in 'round_rewards' to allow swapping/stealing before final application.
+        round_rewards = {}
         for box in boxes:
-            if not box.get('player_id') or box.get('revealed'): continue
+            pid = box.get('player_id')
+            if not pid: continue
+            
+            p_id_str = str(pid)
+            reward = box['reward']
+            
+            # If the box contains a power-up ability, the 'reward' for this round 
+            # is effectively 0 points (placeholder), as the ability itself is used in the next phase.
             if box.get('powerup'):
-                continue  # Skip — handled in GACHA_POWERUP
-            try:
-                p = Player.objects.get(id=box['player_id'])
-                reward = box['reward']
-                # Auto-picked boxes: check if they're powerup abilities
-                if reward.get('type') == 'zonk' and p.shield_count > 0:
-                    box['powerup'] = 'shield'
-                    continue
-                elif reward.get('type') == 'special' and reward.get('item') in ('steal', 'swap', 'double'):
-                    box['powerup'] = reward['item']
-                    continue
-                apply_box_reward(p, box, room_code)
+                 round_rewards[p_id_str] = {'type': 'ability_used', 'amount': 0, 'label': f"Used {box['powerup'].upper()}"}
+            else:
+                 round_rewards[p_id_str] = copy.deepcopy(reward)
+            
+            # Note: We do NOT call apply_box_reward here anymore.
+            # Reveal non-powerup boxes on the host screen.
+            if not box.get('powerup'):
                 box['revealed'] = True
-            except Player.DoesNotExist: continue
         
         # Collect powerup abilities
         powerup_abilities = []
@@ -398,33 +400,32 @@ def transition_to(room_code, new_state, state_data=None, timer=None, force=False
                 except Player.DoesNotExist:
                     pass
         
-        # Build round results summary
+        # Build round results summary based on STAGED rewards
         round_results = []
-        for box in boxes:
-            if box.get('player_id'):
-                reward = box.get('reward', {}) or {}
-                try:
-                    p = Player.objects.get(id=box['player_id'])
-                    round_results.append({
-                        'player_id': str(p.id),
-                        'player_name': p.name,
-                        'reward_label': reward.get('label', 'Unknown'),
-                        'reward_type': reward.get('type', ''),
-                        'reward_item': reward.get('item', ''),
-                        'eliminated': p.status == 'eliminated',
-                        'auto_picked': box.get('auto_picked', False),
-                        'has_powerup': bool(box.get('powerup')),
-                        'powerup_type': box.get('powerup', ''),
-                    })
-                except Player.DoesNotExist:
-                    pass
+        for pid_str, reward in round_rewards.items():
+            try:
+                p = Player.objects.get(id=pid_str)
+                round_results.append({
+                    'player_id': pid_str,
+                    'player_name': p.name,
+                    'reward_label': reward.get('label', 'Unknown'),
+                    'reward_type': reward.get('type', ''),
+                    'reward_item': reward.get('item', ''),
+                    'eliminated': False, # Not determined until resolution
+                    'has_powerup': any(b['player_id'] == pid_str and b.get('powerup') for b in boxes),
+                    'powerup_type': next((b['powerup'] for b in boxes if b['player_id'] == pid_str and b.get('powerup')), ''),
+                })
+            except Player.DoesNotExist:
+                pass
         
         state_data = gs_data
         state_data['boxes'] = boxes
         state_data['picks'] = picks
+        state_data['round_rewards'] = round_rewards
         state_data['round_results'] = round_results
         state_data['powerup_abilities'] = powerup_abilities
-        state_data['_has_powerups'] = len(powerup_abilities) > 0
+        # Ability phase ONLY for Steal and Swap (active choices). Shield and Double are automatic now.
+        state_data['_has_powerups'] = any(a['ability'] in ('steal', 'swap') for a in powerup_abilities)
         
         # Add default timers if no explicit timer is provided
         if timer is None:
@@ -463,19 +464,19 @@ def transition_to(room_code, new_state, state_data=None, timer=None, force=False
             state_data['turn_order'] = player_ids
             state_data['current_turn_index'] = 0
             state_data['clues'] = []
-            timer = 15
+            timer = UNDERCOVER_DISCUSSION_TIMER
         else:
             # Advance to next player or to VOTING
             state_data['current_turn_index'] += 1
             if state_data['current_turn_index'] >= len(state_data['turn_order']):
                 # All players have spoken, transition to VOTING
-                return transition_to(room_code, 'UNDERCOVER_VOTE', {}, 30, True)
-            timer = 15
+                return transition_to(room_code, 'UNDERCOVER_VOTE', state_data, UNDERCOVER_VOTE_TIMER, True)
+            timer = UNDERCOVER_DISCUSSION_TIMER
 
     elif new_state == 'UNDERCOVER_VOTE':
         state_data = current_gs.state_data or {}
         state_data['votes'] = {}
-        timer = state_data.get('timer', 30)
+        timer = UNDERCOVER_VOTE_TIMER
 
     elif new_state == 'UNDERCOVER_RESULT':
         gs_data = current_gs.state_data or {}
@@ -522,13 +523,11 @@ def transition_to(room_code, new_state, state_data=None, timer=None, force=False
         players = Player.objects.filter(room__code=room_code)
         
         if is_undercover_caught:
-            # Civilians win: Everyone except the undercover gets points
             for p in players:
                 if str(p.id) != undercover_id:
                     p.points += 20
                     p.save()
         else:
-            # Undercover wins: Spy gets points
             if undercover_id:
                 try:
                     u = Player.objects.get(id=undercover_id)
@@ -538,18 +537,24 @@ def transition_to(room_code, new_state, state_data=None, timer=None, force=False
         
         # Update names and scoreboard
         scoreboard = {}
+        undercover_player_name = "Unknown"
         for p in players:
             scoreboard[p.name] = p.points
             if str(p.id) == undercover_id:
-                gs_data['undercover_player_name'] = p.name
+                undercover_player_name = p.name
                 
+        # Fill final data per user request
+        gs_data['undercover_player'] = undercover_player_name
+        gs_data['undercover_player_name'] = undercover_player_name # For backward compat
+        gs_data['vote_results'] = vote_counts
+        gs_data['eliminated_player'] = most_voted_id
         gs_data['scoreboard'] = scoreboard
         gs_data['round'] = current_round
         gs_data['total_rounds'] = total_rounds
         gs_data['is_tournament_finished'] = current_round >= total_rounds
         
         state_data = gs_data
-        timer = 0 # Wait for host to click Next Round
+        timer = 0
 
     elif new_state == 'GAME_FINISHED':
         from players.models import Player
@@ -712,150 +717,165 @@ def apply_box_reward(player, box, room_code, player_choice=None):
 
 def resolve_powerup_abilities(room_code, gs_data):
     """
-    Resolve all powerup abilities in order: Shield → Steal → Swap → Double.
-    Returns updated gs_data with all abilities applied.
+    Resolve all powerup abilities using the 'Deferred Reward' system.
+    Order: Double -> Steal -> Swap -> Final (Shield Protection).
     """
     from players.models import Player
-    import random
+    import copy
     
     abilities = gs_data.get('powerup_abilities', [])
     actions = gs_data.get('powerup_actions', {})
     boxes = gs_data.get('boxes', [])
+    round_rewards = gs_data.get('round_rewards', {})
     
-    # Sort by execution order
-    order = {'shield': 1, 'steal': 2, 'swap': 3, 'double': 4}
-    abilities.sort(key=lambda a: order.get(a['ability'], 99))
+    # 1. PRE-RESOLUTION: Reset 'effect_desc' for all resolved boxes
+    for box in boxes:
+        if box.get('player_id'):
+            box['effect_desc'] = ""
+
+    # --- ACTION SORTING ---
+    # Requested Order: STEAL -> SWAP -> DOUBLE -> APPLY
+    order = {'steal': 1, 'swap': 2, 'double': 3}
+    active_abilities = [a for a in abilities if str(a['player_id']) in actions or a['ability'] == 'double']
+    active_abilities.sort(key=lambda a: order.get(a['ability'], 99))
     
-    for ability in abilities:
-        pid = ability['player_id']
-        ab_type = ability['ability']
-        box_id = ability.get('box_id')
+    # Track who used what for UI feedback
+    for ab in abilities:
+        if str(ab['player_id']) in actions or ab['ability'] == 'double':
+             ab['status'] = 'used'
+
+    # 2. PHASE: STEAL
+    for ability in [a for a in active_abilities if a['ability'] == 'steal']:
+        pid = str(ability['player_id'])
         action = actions.get(pid, {})
-        box = next((b for b in boxes if b.get('id') == box_id), None)
+        target_id = str(action.get('target_id'))
+        if target_id and target_id in round_rewards:
+            victim_reward = round_rewards[target_id]
+            my_reward = round_rewards.get(pid, {'type': 'points', 'amount': 0, 'label': 'Used Steal'})
             
+            # STEAL Transfer: Total points of the round_reward, set victim's to 0
+            if victim_reward.get('type') == 'points':
+                stolen_amt = victim_reward.get('amount', 0)
+                victim_reward['amount'] = 0
+                victim_reward['label'] = f"🪙 0 Points (STOLEN BY {ability['player_name'].upper()})"
+                
+                if my_reward.get('type') == 'points':
+                    my_reward['amount'] += stolen_amt
+                    my_reward['label'] = f"🪙 {my_reward['amount']} Points (STEAL +{stolen_amt})"
+                else:
+                    my_reward = {'type': 'points', 'amount': stolen_amt, 'label': f"🪙 {stolen_amt} Points (STOLEN)"}
+                
+                round_rewards[pid] = my_reward
+                ability['status'] = 'used'
+                ability['target_name'] = Player.objects.filter(id=target_id).first().name
+                box = next((b for b in boxes if b.get('id') == ability['box_id']), None)
+                if box: box['effect_desc'] = f"Stole {stolen_amt} points from {ability['target_name']}!"
+        else:
+            ability['status'] = 'carried'
+
+    # 3. PHASE: SWAP
+    for ability in [a for a in active_abilities if a['ability'] == 'swap']:
+        pid = str(ability['player_id'])
+        action = actions.get(pid, {})
+        target_id = str(action.get('target_id'))
+        if target_id and target_id in round_rewards:
+            # SWAP current round rewards only
+            round_rewards[pid], round_rewards[target_id] = round_rewards[target_id], round_rewards[pid]
+            
+            ability['status'] = 'used'
+            ability['target_name'] = Player.objects.filter(id=target_id).first().name
+            box = next((b for b in boxes if b.get('id') == ability['box_id']), None)
+            if box: box['effect_desc'] = f"Swapped rewards with {ability['target_name']}! 🔄"
+        else:
+            ability['status'] = 'carried'
+
+    # 4. PHASE: DOUBLE
+    for ability in [a for a in active_abilities if a['ability'] == 'double']:
+        pid = str(ability['player_id'])
+        # Automatic for Double now, no action check needed if they have the ability
+        reward = round_rewards.get(pid)
+        if reward and reward.get('type') == 'points':
+            reward['amount'] *= 2
+            reward['label'] = f"🪙 {reward['amount']} Points (DOUBLED)"
+            ability['status'] = 'used'
+            # Update box feedback
+            box = next((b for b in boxes if b.get('id') == ability['box_id']), None)
+            if box: box['effect_desc'] = "Double Points Activated! 🔥"
+        else:
+            # If no points to double, it carries forward
+            ability['status'] = 'carried'
+
+    # 5. FINAL RESOLUTION: APPLY TO DATABASE & HANDLE SHIELDS
+    # This is where we finally commit to the Player model
+    for pid_str, reward in round_rewards.items():
         try:
-            player = Player.objects.get(id=pid)
+            player = Player.objects.get(id=pid_str)
+            box = next((b for b in boxes if str(b.get('player_id')) == pid_str), None)
+            
+            # --- SHIELD PROTECTION ---
+            if reward.get('type') == 'zonk':
+                if player.shield_count > 0:
+                    player.shield_count -= 1
+                    reward['type'] = 'safe'
+                    reward['label'] = "💀 ZONK! (SHIELD SAVED YOU)"
+                    if box:
+                        box['effect_desc'] = "Shield Consumed! Saved from Zonk."
+                        box['revealed'] = True
+                    # Also update ability status for feedback if they picked shield
+                    shield_ab = next((a for a in abilities if str(a['player_id']) == pid_str and a['ability'] == 'shield'), None)
+                    if shield_ab: shield_ab['status'] = 'used'
+                else:
+                    # Elimination
+                    player.status = 'eliminated'
+                    if box:
+                        box['eliminated'] = True
+                        box['revealed'] = True
+            
+            # --- ABILITY STATE MANAGEMENT ---
+            # 1. Clear any 'used' abilities
+            for ab in abilities:
+                if str(ab['player_id']) == pid_str and ab['status'] == 'used':
+                    player.pending_ability = None
+            
+            # 2. Update 'carried' or 'newly picked' abilities if not used
+            for ab in abilities:
+                if str(ab['player_id']) == pid_str and ab['status'] == 'unused':
+                    # Only carry Steal, Swap, Double. Shield is a count, not a pending_ability.
+                    if ab['ability'] in ('steal', 'swap', 'double'):
+                        player.pending_ability = ab['ability']
+                        if box:
+                            box['effect_desc'] = f"{ab['ability'].upper()} CARRIED ➡️"
+            
+            # Apply Reward to Model (Points, Spins, Snacks, Shields, etc.)
+            apply_final_reward_to_player(player, reward)
+            
+            player.save()
         except Player.DoesNotExist:
             continue
-        
-        player.refresh_from_db()
-        
-        has_acted = str(pid) in actions
-        
-        # If no action was taken, they carry the ability to the next round
-        if not has_acted:
-            if ab_type == 'shield':
-                # Carry shield, but accept Zonk for this round
-                player.points = max(0, player.points - 10)
-                player.status = 'eliminated'
-                if box:
-                    box['revealed'] = True
-                    box['eliminated'] = True
-                    box['effect_desc'] = "ZONK - Eliminated! (Shield Carried)"
-                ability['status'] = 'carried'
-                # Notice we do NOT decrement shield_count, so they keep it. There's no need to set pending_ability for shield since shield_count persists natively.
-            else:
-                player.pending_ability = ab_type
-                ability['status'] = 'carried'
-                if box:
-                    box['revealed'] = True
-                    box['effect_desc'] = f"{ab_type.upper()} CARRIED ➡️"
-            player.save()
-            continue
-            
-        # Player acted:
-        if ab_type == 'shield':
-            use_shield = action.get('value', False)
-            if use_shield and player.shield_count > 0:
-                player.shield_count -= 1
-                if box:
-                    box['revealed'] = True
-                    box['effect_desc'] = "Shield Used! Safe from Zonk."
-                ability['status'] = 'used'
-            else:
-                player.points = max(0, player.points - 10)
-                player.status = 'eliminated'
-                if box:
-                    box['revealed'] = True
-                    box['eliminated'] = True
-                    box['effect_desc'] = "ZONK - Eliminated!"
-                ability['status'] = 'carried'
-            player.save()
-            
-        elif ab_type == 'steal':
-            target_id = action.get('target_id')
-            if target_id:
-                try:
-                    victim = Player.objects.get(id=target_id)
-                    steal_amount = min(15, victim.points)
-                    victim.points = max(0, victim.points - steal_amount)
-                    victim.save()
-                    player.points += steal_amount
-                    if box:
-                        box['revealed'] = True
-                        box['effect_desc'] = f"Stole {steal_amount} pts from {victim.name}!"
-                    ability['status'] = 'used'
-                    ability['target_name'] = victim.name
-                    player.pending_ability = None
-                except Player.DoesNotExist:
-                    if box: box['revealed'] = True
-                    ability['status'] = 'carried'
-            else:
-                # If they hit skip button during steal
-                if box:
-                    box['revealed'] = True
-                    box['effect_desc'] = "STEAL CARRIED ➡️"
-                ability['status'] = 'carried'
-                player.pending_ability = 'steal'
-            player.save()
 
-        elif ab_type == 'swap':
-            target_id = action.get('target_id')
-            if target_id:
-                try:
-                    rival = Player.objects.get(id=target_id)
-                    player.points, rival.points = rival.points, player.points
-                    rival.save()
-                    if box:
-                        box['revealed'] = True
-                        box['effect_desc'] = f"Swapped points with {rival.name}!"
-                    ability['status'] = 'used'
-                    ability['target_name'] = rival.name
-                    player.pending_ability = None
-                except Player.DoesNotExist:
-                    if box: box['revealed'] = True
-                    ability['status'] = 'carried'
-            else:
-                if box:
-                    box['revealed'] = True
-                    box['effect_desc'] = "SWAP CARRIED ➡️"
-                ability['status'] = 'carried'
-                player.pending_ability = 'swap'
-            player.save()
-
-        elif ab_type == 'double':
-            activate = action.get('value', False)
-            if activate:
-                player.double_next_round = True
-                if box:
-                    box['revealed'] = True
-                    box['effect_desc'] = "Double activated for NEXT round!"
-                ability['status'] = 'used'
-                player.pending_ability = None
-            else:
-                if box:
-                    box['revealed'] = True
-                    box['effect_desc'] = "DOUBLE CARRIED ➡️"
-                ability['status'] = 'carried'
-                player.pending_ability = 'double'
-            player.save()
-        
-        if box:
-            box.pop('powerup', None)
-    
     gs_data['boxes'] = boxes
     gs_data['powerup_abilities'] = abilities
+    gs_data['round_rewards'] = round_rewards
     return gs_data
+
+def apply_final_reward_to_player(player, reward):
+    """Commits a processed reward object to a player's permanent totals."""
+    rtype = reward.get('type')
+    if rtype == 'points':
+        player.points += reward.get('amount', 0)
+    elif rtype == 'spins':
+        player.spin_count += reward.get('amount', 0)
+    elif rtype == 'snack':
+        player.snack_count += reward.get('amount', 1)
+        player.points += 10 # Standard snack bonus
+    elif rtype == 'special':
+        item = reward.get('item')
+        if item == 'shield':
+            player.shield_count += 1
+        elif item == 'jackpot_spin':
+            player.spin_count += 1
+            player.jackpot_count += 1
+    # Zonk and Safe are handled by status/shield_count in resolution loop
 
 
 def check_all_picked(room_code, picks):

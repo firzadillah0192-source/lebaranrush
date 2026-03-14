@@ -12,34 +12,38 @@
     <!-- Content -->
     <div class="relative z-10 w-full max-w-xl">
         <div class="glass p-8 md:p-12 rounded-[50px] shadow-2xl space-y-8 animate-pop-in">
-            <div class="text-center space-y-2">
-                <div class="text-lebaran-500 font-black uppercase tracking-[0.4em] text-xs">Room Established</div>
-                <h1 class="text-5xl font-black text-white italic tracking-tighter uppercase">JOIN ROOM: <span
-                        class="text-lebaran-500">{{ room.code }}</span></h1>
-                <p class="text-slate-400 font-medium italic">Who are we playing with today?</p>
+            <div class="flex items-center justify-between">
+                <a href="{% url 'index' %}" class="text-slate-400 hover:text-white transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 19l-7-7 7-7" />
+                    </svg>
+                </a>
+                <h2 class="text-2xl font-black text-white italic uppercase tracking-tighter">Enter Room Code</h2>
+                <div class="w-8"></div>
             </div>
 
             <form method="POST" class="space-y-6">
                 {% csrf_token %}
                 <div class="relative">
-                    <input type="text" name="name" placeholder="Enter Nickname" required autofocus
-                        class="w-full bg-slate-900/50 border-4 border-slate-700 rounded-3xl p-8 text-3xl font-black text-center text-white focus:border-lebaran-500 outline-none transition-all placeholder:opacity-10">
+                    <input type="text" name="room_code" maxlength="5" placeholder="_____" autofocus
+                        class="w-full bg-slate-900/50 border-4 border-slate-700 rounded-3xl p-6 md:p-8 text-4xl md:text-6xl font-black text-center text-lebaran-500 uppercase tracking-[0.2em] focus:border-lebaran-500 outline-none transition-all placeholder:opacity-10">
                     <div
                         class="absolute -bottom-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-slate-700 rounded-full text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">
-                        Keep it fun!</div>
+                        5 Character Code</div>
                 </div>
 
                 <div class="pt-4">
                     <button type="submit"
                         class="w-full bg-lebaran-500 hover:bg-lebaran-400 text-white font-black py-6 rounded-3xl text-xl uppercase tracking-widest shadow-lg shadow-lebaran-500/20 transition-all">
-                        ENTER THE LOBBY →
+                        JOIN PARTY NOW →
                     </button>
                 </div>
             </form>
 
-            <div class="pt-6 border-t border-white/5 flex items-center justify-center gap-4">
-                <div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-lg">🎮</div>
-                <p class="text-[10px] text-slate-500 font-black uppercase tracking-widest">Multiplayer Ready</p>
+            <div class="pt-6 border-t border-white/5 space-y-4 text-center">
+                <p class="text-[10px] text-slate-500 font-black uppercase tracking-widest">Powered by Lebaran Rush
+                    Engine</p>
             </div>
         </div>
     </div>

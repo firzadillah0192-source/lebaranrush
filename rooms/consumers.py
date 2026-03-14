@@ -10,7 +10,8 @@ from engine.state_manager import get_current_state
 
 class RoomConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        self.room_code = self.scope['url_route']['kwargs']['room_code']
+        # Force room code to uppercase for case-insensitive matching/groups
+        self.room_code = self.scope['url_route']['kwargs']['room_code'].upper()
         self.room_group_name = f'room_{self.room_code}'
         # Identity tracking for reward masking
         self.is_host = False
@@ -30,6 +31,7 @@ class RoomConsumer(AsyncWebsocketConsumer):
                 "state": state['current_state'],
                 "data": self.mask_rewards(state['state_data'], state['current_state']),
                 "timer": state['timer'],
+                "started_at": state.get('started_at'),
                 "server_time": state['server_time'],
                 "players": state['players']
             }))
@@ -64,8 +66,9 @@ class RoomConsumer(AsyncWebsocketConsumer):
             )
 
         elif action == 'chat_message':
-            pid = self.player_id or data.get('player_id')
-            pname = await self.get_player_name(pid) if pid else data.get('player_name', 'Unknown')
+            # Use cached name if available
+            pid = self.player_id
+            pname = await self.get_player_name(pid) if pid else "Guest"
             message = data.get('message')
             if message:
                 await self.channel_layer.group_send(
@@ -104,13 +107,9 @@ class RoomConsumer(AsyncWebsocketConsumer):
             )
 
             if success:
-                # Always broadcast state change
-                await self.channel_layer.group_send(
-                    self.room_group_name,
-                    {
-                        "type": "game_state_update"
-                    }
-                )
+                # The state_manager.update_game_state already broadcasts 'game_state_update'
+                # with full data. We don't need a redundant broadcast here.
+                pass
 
             if not success:
                 await self.send(text_data=json.dumps({
@@ -192,18 +191,14 @@ class RoomConsumer(AsyncWebsocketConsumer):
                 target_round = data.get('round', 1)
                 result = await database_sync_to_async(start_undercover_game)(self.room_code)
                 if result.get('success'):
+                    from engine.transitions import UNDERCOVER_REVEAL_TIMER
                     await database_sync_to_async(transition_to)(
                         self.room_code, 'UNDERCOVER_WORD', {
                             'assignments': result['assignments'],
                             'round': target_round
-                        }, 10, True
+                        }, UNDERCOVER_REVEAL_TIMER, True
                     )
-                    await self.channel_layer.group_send(
-                        self.room_group_name,
-                        {
-                            "type": "game_state_update"
-                        }
-                    )
+                    pass # state_manager already broadcasted with full data
                 else:
                     await self.send(text_data=json.dumps({
                         "action": "error",
@@ -232,12 +227,7 @@ class RoomConsumer(AsyncWebsocketConsumer):
                             'reward': reward # Includes chosen_index for animation
                         }
                     )
-                    await self.channel_layer.group_send(
-                        self.room_group_name,
-                        {
-                            'type': 'game_state_update',
-                        }
-                    )
+                    pass # state_manager already broadcasted with full data
                 else:
                     print(f"[WS] Spin failed: {msg}")
                     await self.send(text_data=json.dumps({
@@ -272,6 +262,22 @@ class RoomConsumer(AsyncWebsocketConsumer):
         elif action == 'admin_delete_word':
             await self.handle_admin_delete_word(data)
 
+        elif action == 'sync_all':
+            if self.is_host:
+                state = await self.get_room_state_data()
+                if state:
+                    await self.channel_layer.group_send(
+                        self.room_group_name,
+                        {
+                            "type": "game_state_update",
+                            "state": state['current_state'],
+                            "data": state['state_data'],
+                            "timer": state['timer'],
+                            "started_at": state.get('started_at'),
+                            "players": state['players']
+                        }
+                    )
+
         elif action == 'sync_request':
             state = await self.get_room_state_data()
             if state:
@@ -287,24 +293,20 @@ class RoomConsumer(AsyncWebsocketConsumer):
     # --- REWARD MASKING ---
     def mask_rewards(self, state_data, current_state):
         """
-        Strip reward info from boxes for non-host players during GACHA_PICK/SHUFFLE.
-        Host and GACHA_REVEAL/GACHA_RESULT states get full data.
-        The picker always sees their own reward (even before revealed=True).
+        Strip sensitive info from state_data for non-host players.
+        The picker always sees their own reward.
         """
-        if not state_data or 'boxes' not in state_data:
+        if not state_data:
             return state_data
 
         # Host always sees everything
         if self.is_host:
             return state_data
 
-        # During reveal phase, everyone sees rewards (memorization)
-        if current_state in ('GACHA_REVEAL', 'GACHA_RESULT', 'GACHA_CONFIG'):
-            return state_data
+        masked = copy.deepcopy(state_data)
 
-        # During pick/shuffle/interact/powerup, mask rewards for non-pickers
-        if current_state in ('GACHA_PICK', 'GACHA_SHUFFLE', 'GACHA_INTERACT', 'GACHA_POWERUP'):
-            masked = copy.deepcopy(state_data)
+        # 1. Mask words for non-pickers in Gacha
+        if current_state in ('GACHA_PICK', 'GACHA_SHUFFLE', 'GACHA_INTERACT', 'GACHA_POWERUP') and 'boxes' in masked:
             for box in masked.get('boxes', []):
                 if str(box.get('player_id', '')) == str(self.player_id):
                     continue
@@ -313,19 +315,21 @@ class RoomConsumer(AsyncWebsocketConsumer):
             masked.pop('_last_pick_event', None)
             masked.pop('_all_picked', None)
             masked.pop('_has_powerups', None)
-            return masked
 
-        if current_state == 'UNDERCOVER_WORD':
-            masked = copy.deepcopy(state_data)
+        # 2. Mask words for Undercover
+        if current_state == 'UNDERCOVER_WORD' and 'assignments' in masked:
             assignments = masked.get('assignments', {})
-            # If not host, only keep the player's own assignment
-            if not self.is_host and self.player_id:
+            # Only keep the player's own assignment
+            if self.player_id:
                 player_id_str = str(self.player_id)
                 my_assignment = assignments.get(player_id_str)
                 masked['assignments'] = {player_id_str: my_assignment} if my_assignment else {}
-            return masked
+            else:
+                masked['assignments'] = {}
+        
+        # 3. Mask voting progress if needed (optional, currently public)
 
-        return state_data
+        return masked
 
     # --- GROUP HANDLERS ---
     async def room_message(self, event):
@@ -333,16 +337,22 @@ class RoomConsumer(AsyncWebsocketConsumer):
 
     async def game_state_update(self, event):
         """Handler for state updates from engine broadcast."""
-        # Refresh everything from DB to ensure consistency
-        state_obj = await self.get_room_state_data()
-        if not state_obj:
-            return
-
-        state = state_obj['current_state']
-        data = state_obj['state_data']
-        timer = state_obj['timer']
+        # Prioritize data from the event for speed and consistency
+        state = event.get('state')
+        data = event.get('data')
+        timer = event.get('timer')
+        started_at = event.get('started_at', 0)
         
-        # Include players list for status sync
+        # Fallback to DB only if event is incomplete
+        if state is None or data is None:
+            state_obj = await self.get_room_state_data()
+            if not state_obj: return
+            state = state_obj['current_state']
+            data = state_obj['state_data']
+            timer = state_obj['timer']
+            started_at = state_obj.get('started_at', 0)
+
+        # Always fetch fresh players list for status sync
         players_data = await self.get_players_list()
         
         await self.send(text_data=json.dumps({
@@ -350,7 +360,7 @@ class RoomConsumer(AsyncWebsocketConsumer):
             "state": state,
             "data": self.mask_rewards(data, state),
             "timer": timer,
-            "started_at": state_obj.get('started_at', 0),
+            "started_at": started_at,
             "players": players_data
         }))
 
@@ -359,10 +369,15 @@ class RoomConsumer(AsyncWebsocketConsumer):
             import asyncio
             if state == 'GACHA_RESULT':
                 asyncio.create_task(self.auto_advance_from_result())
+            elif state == 'GACHA_POWERUP':
+                asyncio.create_task(self.auto_advance_from_powerup())
             elif state == 'SPINWHEEL_SPIN':
                 asyncio.create_task(self.auto_advance_spin(4.0))
             elif state == 'SPINWHEEL_RESULT':
                 asyncio.create_task(self.auto_reset_spin_ready(6.0))
+            elif state.startswith('UNDERCOVER_') and timer > 0:
+                current_turn = data.get('current_turn_index') if state == 'UNDERCOVER_DISCUSSION' else None
+                asyncio.create_task(self.auto_advance_undercover(state, timer, current_turn))
 
     # --- HELPERS ---
     async def broadcast_player_update(self, player_id):
@@ -458,6 +473,7 @@ class RoomConsumer(AsyncWebsocketConsumer):
                 "current_state": state.current_state,
                 "state_data": state.state_data or {},
                 "timer": state.timer_duration or 0,
+                "started_at": state.state_started_at.isoformat(),
                 "server_time": int(timezone.now().timestamp() * 1000),
                 "players": players_data
             }
@@ -583,6 +599,8 @@ class RoomConsumer(AsyncWebsocketConsumer):
 
             # Broadcast point update
             await self.broadcast_player_update(player_id)
+            if interaction_type == 'swap_points' and 'rival' in locals():
+                await self.broadcast_player_update(rival.id)
 
             # Auto-advance: if in GACHA_INTERACT, try to go to GACHA_RESULT now
             if state.current_state == 'GACHA_INTERACT':
@@ -687,8 +705,9 @@ class RoomConsumer(AsyncWebsocketConsumer):
             await database_sync_to_async(state.save)()
 
             # Advance turn (using transition_to so it handles logic consistently)
+            from engine.transitions import UNDERCOVER_DISCUSSION_TIMER
             await database_sync_to_async(transition_to)(
-                self.room_code, 'UNDERCOVER_DISCUSSION', {}, 15, True
+                self.room_code, 'UNDERCOVER_DISCUSSION', {}, UNDERCOVER_DISCUSSION_TIMER, True
             )
 
             # Broadcast update
@@ -805,8 +824,8 @@ class RoomConsumer(AsyncWebsocketConsumer):
                 }
             )
 
-            # Check if all players with abilities have acted
-            pending = [a for a in abilities if a['status'] in ('pending', 'unused')]
+            # Check if all players with active abilities (steal, swap) have acted
+            pending = [a for a in abilities if a['status'] in ('pending', 'unused') and a['ability'] in ('steal', 'swap')]
             if not pending:
                 import asyncio
                 await asyncio.sleep(1.0)
@@ -821,6 +840,13 @@ class RoomConsumer(AsyncWebsocketConsumer):
         import asyncio
         await asyncio.sleep(delay)  # Wait for results to be visible
         
+        # --- STATE GUARD ---
+        # Ensure we are still in the state we expect before advancing
+        # This prevents race conditions where multiple picks trigger multiple advances
+        state_obj = await self.get_room_state_data()
+        if not state_obj or state_obj['current_state'] != 'GACHA_RESULT':
+            return
+
         has_powerups = await self.check_has_powerups_flag()
         if has_powerups:
             await database_sync_to_async(transition_to)(
@@ -830,6 +856,11 @@ class RoomConsumer(AsyncWebsocketConsumer):
             # Add a bit more delay for players to read results if no powerups
             await asyncio.sleep(3.0) 
             
+            # Re-check state AGAIN after second sleep
+            state_obj = await self.get_room_state_data()
+            if not state_obj or state_obj['current_state'] != 'GACHA_RESULT':
+                return
+
             active_count = await self.get_active_player_count()
             has_next = await self.check_has_next_round_flag()
             
@@ -837,12 +868,24 @@ class RoomConsumer(AsyncWebsocketConsumer):
                 await database_sync_to_async(transition_to)(
                     self.room_code, 'GAME_FINISHED', {}, None, True
                 )
-            elif has_next:
-                await self.advance_to_next_round()
             else:
-                await database_sync_to_async(transition_to)(
-                    self.room_code, 'GAME_FINISHED', {}, None, True
-                )
+                await self.auto_resolve_and_advance()
+
+    async def auto_advance_from_powerup(self):
+        """Automatically resolve power-ups when time expires."""
+        import asyncio
+        state_obj = await self.get_room_state_data()
+        if not state_obj or state_obj['current_state'] != 'GACHA_POWERUP':
+            return
+            
+        timer = state_obj.get('timer', 10)
+        # Wait for timer + buffer
+        await asyncio.sleep(timer + 1)
+        
+        # Re-check state: if still in POWERUP, force resolution
+        state_obj = await self.get_room_state_data()
+        if state_obj and state_obj['current_state'] == 'GACHA_POWERUP':
+            await self.auto_resolve_and_advance()
 
     async def auto_resolve_and_advance(self):
         """Handle logic for advancing after powerups are resolved."""
@@ -851,12 +894,16 @@ class RoomConsumer(AsyncWebsocketConsumer):
 
         @database_sync_to_async
         def do_resolve():
+            from engine.state_manager import update_game_state
             room = Room.objects.get(code=self.room_code)
             state = room.game_state
             gs_data = state.state_data or {}
+            
+            # Resolve the abilities (modifies round_rewards and commits to Player models)
             gs_data = resolve_powerup_abilities(self.room_code, gs_data)
-            state.state_data = gs_data
-            state.save()
+            
+            # Use the state manager to broadcast the updated state to all clients
+            update_game_state(self.room_code, state.current_state, gs_data)
             return gs_data
 
         gs_data = await do_resolve()
@@ -903,8 +950,13 @@ class RoomConsumer(AsyncWebsocketConsumer):
             try:
                 room = Room.objects.get(code=self.room_code)
                 state = room.game_state
+                # Only advance if we are actually still in a state that allows it
+                if state.current_state not in ('GACHA_RESULT', 'GACHA_POWERUP'):
+                    return None
+                    
                 gs_data = state.state_data or {}
                 return {
+                    'current_round': gs_data.get('current_round', 1),
                     'next_round': gs_data.get('current_round', 1) + 1,
                     'round_configs': gs_data.get('round_configs', []),
                     'active_count': Player.objects.filter(room__code=self.room_code, status='active').count()
@@ -920,6 +972,7 @@ class RoomConsumer(AsyncWebsocketConsumer):
                 self.room_code, 'GAME_FINISHED', {}, None, True
             )
         elif data['next_round'] <= len(data['round_configs']):
+            # Double check current state data is the same round we think it is
             await database_sync_to_async(transition_to)(
                 self.room_code, 'GACHA_REVEAL', {
                     'round': data['next_round'],
@@ -983,12 +1036,7 @@ class RoomConsumer(AsyncWebsocketConsumer):
                 }
             )
             
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'game_state_update',
-                }
-            )
+            pass # state_manager already broadcasted with full data
 
     async def auto_reset_spin_ready(self, delay=6.0):
         import asyncio
@@ -1027,12 +1075,7 @@ class RoomConsumer(AsyncWebsocketConsumer):
             )
             
         if success:
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'game_state_update',
-                }
-            )
+            pass # state_manager already broadcasted with full data
     async def check_and_trigger_spin(self):
         """Automatically start the spin if there is someone in the queue and we are READY."""
         @database_sync_to_async
@@ -1062,3 +1105,39 @@ class RoomConsumer(AsyncWebsocketConsumer):
             except Exception:
                 return "Unknown"
         return await _get()
+
+    async def auto_advance_undercover(self, state, timer, turn_index=None):
+        """Automatically advance Undercover phases when timer expires."""
+        import asyncio
+        if timer <= 0: return
+        
+        # Wait for the timer duration
+        await asyncio.sleep(timer)
+        
+        # Verify if we are still in the same state before advancing
+        state_obj = await self.get_room_state_data()
+        if not state_obj or state_obj['current_state'] != state:
+            return
+            
+        # For DISCUSSION, check if we are still on the same turn
+        if state == 'UNDERCOVER_DISCUSSION' and turn_index is not None:
+            current_gs_data = state_obj.get('state_data', {})
+            if current_gs_data.get('current_turn_index') != turn_index:
+                return
+
+        if state == 'UNDERCOVER_WORD':
+            await database_sync_to_async(transition_to)(
+                self.room_code, 'UNDERCOVER_DISCUSSION', {}, None, True
+            )
+        elif state == 'UNDERCOVER_DISCUSSION':
+            # Advance to next turn (transition_to handles the logic)
+            await database_sync_to_async(transition_to)(
+                self.room_code, 'UNDERCOVER_DISCUSSION', {}, None, True
+            )
+        elif state == 'UNDERCOVER_VOTE':
+            await database_sync_to_async(transition_to)(
+                self.room_code, 'UNDERCOVER_RESULT', {}, None, True
+            )
+            
+        # No need for manual broadcast here, transition_to -> update_game_state already did it
+        pass

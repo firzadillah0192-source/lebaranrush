@@ -70,14 +70,32 @@ Depending on your operating system, run the appropriate script from the project 
   ```
   *(Note: Make sure to `chmod +x start.sh` before running.)*
 
-## 🎮 How to Join
-1. **Host**: Open `http://localhost:8000/host` on your laptop.
-2. **Players**: Scan the QR code displayed on the host screen or go to the URL shown in your terminal (e.g., `http://192.168.1.15:8000`).
+## 🌐 VPS Deployment
+To host this on a VPS (e.g., DigitalOcean, AWS, Linode), follow these steps:
 
-## 🛠️ Troubleshooting
-- **Cannot connect?** Ensure your laptop and players are on the same Wi-Fi network. Check your firewall settings.
-- **Windows PowerShell?** If `start.bat` doesn't run, try `./start.bat`. Do not try to run `.sh` files in PowerShell directly.
-- **IP Address?** The server will print your local IP address in the terminal. Give this address to players if the QR code fails.
+1. **Clone the Repo**:
+   ```bash
+   git clone https://github.com/firzadillah0192-source/lebaranrush.git
+   cd lebaranrush
+   ```
+2. **Environment Setup**:
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
+   ```
+3. **Database & Static**:
+   ```bash
+   python manage.py migrate
+   python manage.py collectstatic --noinput
+   python seed_undercover.py  # Add initial word pairs
+   ```
+4. **Run with Daphne (Production)**:
+   ```bash
+   # Make sure you are in the virtualenv
+   daphne -b 0.0.0.0 -p 8000 lebaranrush.asgi:application
+   ```
+   *Tip: Use `tmux` or `systemd` to keep the process running.*
 
 ---
 Developed for the ultimate Lebaran gathering experience! 🌙✨

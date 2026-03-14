@@ -18,7 +18,13 @@ env.bak/
 venv.bak/
 
 # Project specific
-static/
+!static/
+!static/images/
+!static/images/*.png
+!static/images/*.jpg
 staticfiles/
 .DS_Store
 *.swp
+tmp/
+out.html
+fixed.html

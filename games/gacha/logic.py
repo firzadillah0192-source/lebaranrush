@@ -27,7 +27,7 @@ def generate_gacha_boxes_v2(box_count, zonk_count, special_items):
         if len(boxes) >= box_count: break
         boxes.append({
             'id': len(boxes),
-            'reward': {'type': 'zonk', 'amount': 0, 'label': '💥 ZONK! (0 PKT)'},
+            'reward': {'type': 'zonk', 'amount': 0, 'label': '💀 ELIMINATED'},
             'player_id': None, 'player_name': None, 'revealed': False
         })
 
@@ -56,7 +56,7 @@ def process_manual_boxes(manual_config):
     boxes = []
     label_map = {
         'snack': '🍿 SNACK REWARD',
-        'zonk': '💥 ZONK! (ELIMINATED)',
+        'zonk': '💀 ELIMINATED',
         'steal': '🕵️ STEAL POINTS',
         'shield': '🛡️ SHIELD (SAFE)',
         'swap': '🔄 SWAP POINTS',

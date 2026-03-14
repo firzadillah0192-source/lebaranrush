@@ -9,6 +9,13 @@ from players.models import Player
 def index(request):
     return render(request, 'rooms/index.html')
 
+def join_index(request):
+    if request.method == 'POST':
+        room_code = request.POST.get('room_code', '').upper().strip()
+        if room_code:
+            return redirect('join_room', room_code=room_code)
+    return render(request, 'rooms/join_index.html')
+
 def create_room(request):
     if not request.session.session_key:
         request.session.create()

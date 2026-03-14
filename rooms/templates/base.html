@@ -1,9 +1,11 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Lebaran Rush</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -28,16 +30,105 @@
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <!-- AlpineJS -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Fonts: Inter & Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=Outfit:wght@100..900&display=swap"
+        rel="stylesheet">
     <style>
+        html {
+            font-size: 16px;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #0f172a;
+            background-color: #020617;
             color: #f8fafc;
-            overflow-x: hidden;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            height: 100dvh;
+            width: 100vw;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+            overscroll-behavior: none;
+        }
+
+        .h-view {
+            height: 100vh;
+            height: 100dvh;
+        }
+
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom, 16px);
+        }
+
+        .min-h-view {
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+
+        .box-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            justify-content: center;
+            gap: 0.75vh;
+            width: 100%;
+            max-width: min(72vh, 800px);
+            margin: 0 auto;
+        }
+
+        .game-panel {
+            width: 100%;
+            max-width: 1000px;
+            margin: 0 auto;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            overflow: hidden;
+            padding-bottom: 2vh;
+        }
+
+        .box {
+            aspect-ratio: 1 / 1;
+            width: 100%;
+            max-width: 17vh;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .round-title {
+            font-size: clamp(18px, 4vh, 32px) !important;
+            line-height: 1.0;
+        }
+
+        .game-area {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .grid-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            min-height: 0;
+            padding: 20px;
+            gap: 20px;
         }
 
         .custom-scrollbar::-webkit-scrollbar {
-            width: 5px;
+            width: 6px;
         }
 
         .custom-scrollbar::-webkit-scrollbar-track {
@@ -55,14 +146,72 @@
             border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
+        .shadow-text {
+            text-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
         [x-cloak] {
             display: none !important;
         }
+
+        /* Standard header style */
+        .stage-title {
+            font-weight: 900;
+            text-transform: uppercase;
+            font-style: italic;
+            letter-spacing: -0.05em;
+            line-height: 0.9;
+        }
+
+        @keyframes popIn {
+            0% {
+                transform: translateY(10px);
+                opacity: 0;
+            }
+
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .eid-bg-overlay {
+            background-image: url("{% static 'images/eid_bg.png' %}");
+        }
+
+        .animate-pop-in {
+            animation: popIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
     </style>
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.store('config', {
+                lang: localStorage.getItem('game_lang') || 'en',
+                setLang(l) {
+                    this.lang = l;
+                    localStorage.setItem('game_lang', l);
+                    // Dispatch event for components that need to react specifically
+                    window.dispatchEvent(new CustomEvent('lang-changed', { detail: l }));
+                }
+            });
+        });
+    </script>
+    <script>
+        // Disable pinch zoom and Ctrl +/- zoom
+        window.addEventListener('wheel', function (e) {
+            if (e.ctrlKey) { e.preventDefault(); }
+        }, { passive: false });
+        window.addEventListener('keydown', function (e) {
+            if (e.ctrlKey && (e.key === '=' || e.key === '-' || e.key === '0')) {
+                e.preventDefault();
+            }
+        });
+    </script>
 </head>
 
-<body class="min-h-screen text-slate-200">
-    <main class="min-h-screen w-full overflow-x-hidden">
+<body class="h-view w-screen text-slate-200 overflow-hidden pb-safe">
+    <main class="h-full w-full flex flex-col overflow-hidden">
+        {% include 'rooms/guide_modal.html' %}
         {% block content %}{% endblock %}
     </main>
 </body>
