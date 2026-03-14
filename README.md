@@ -16,7 +16,7 @@ Lebaran Rush is a **web-based multiplayer party game** designed to bring fun and
 - **Backend**: Python, Django, Django Channels (WebSockets)
 - **Frontend**: TailwindCSS, AlpineJS, HTMX
 - **Real-time**: Daphne ASGI server
-- **Database**: SQLite (No complex setup required)
+- **Database**: SQLite (development) / PostgreSQL via `DATABASE_URL` (production)
 - **QR Codes**: `python-qrcode`
 
 ## 📂 Project Structure
@@ -84,13 +84,21 @@ To host this on a VPS (e.g., DigitalOcean, AWS, Linode), follow these steps:
    source venv/bin/activate
    pip install -r requirements.txt
    ```
-3. **Database & Static**:
+3. **Set production environment variables** (important):
+   ```bash
+   export DEBUG=False
+   export SECRET_KEY="replace-with-a-strong-random-secret"
+   export ALLOWED_HOSTS="your-domain.com,www.your-domain.com"
+   export DATABASE_URL="postgresql://db_user:db_password@127.0.0.1:5432/lebaranrush"
+   export REDIS_URL="redis://127.0.0.1:6379/1"
+   ```
+4. **Database & Static**:
    ```bash
    python manage.py migrate
    python manage.py collectstatic --noinput
    python seed_undercover.py  # Add initial word pairs
    ```
-4. **Run with Daphne (Production)**:
+5. **Run with Daphne (Production)**:
    ```bash
    # Make sure you are in the virtualenv
    daphne -b 0.0.0.0 -p 8000 lebaranrush.asgi:application
