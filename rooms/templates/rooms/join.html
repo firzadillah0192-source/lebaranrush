@@ -1,10 +1,11 @@
+{% load static %}
 {% extends "base.html" %}
 
 {% block content %}
 <div class="relative h-full w-full flex items-center justify-center p-6 overflow-hidden bg-[#0f172a]">
     <!-- Background Image -->
     <div class="absolute inset-0 z-0 opacity-40">
-        <img src="/brain/b98a8a20-ae24-4378-8882-f04a73099293/lebaran_rush_background_1773390332457.png"
+        <img src="{% static 'images/eid_bg.png' %}"
             class="w-full h-full object-cover">
         <div class="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-transparent to-transparent"></div>
     </div>
