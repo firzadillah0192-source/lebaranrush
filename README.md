@@ -16,7 +16,7 @@ Lebaran Rush is a **web-based multiplayer party game** designed to bring fun and
 - **Backend**: Python, Django, Django Channels (WebSockets)
 - **Frontend**: TailwindCSS, AlpineJS, HTMX
 - **Real-time**: Daphne ASGI server
-- **Database**: SQLite (No complex setup required)
+- **Database**: SQLite (development) / PostgreSQL via `DATABASE_URL` (production)
 - **QR Codes**: `python-qrcode`
 
 ## 📂 Project Structure
@@ -84,18 +84,92 @@ To host this on a VPS (e.g., DigitalOcean, AWS, Linode), follow these steps:
    source venv/bin/activate
    pip install -r requirements.txt
    ```
-3. **Database & Static**:
+3. **Set production environment variables** (important):
+   ```bash
+   export DEBUG=False
+   export SECRET_KEY="replace-with-a-strong-random-secret"
+   export ALLOWED_HOSTS="your-domain.com,www.your-domain.com"
+   export DATABASE_URL="postgresql://db_user:db_password@127.0.0.1:5432/lebaranrush"
+   export REDIS_URL="redis://127.0.0.1:6379/1"
+   ```
+4. **Database & Static**:
    ```bash
    python manage.py migrate
    python manage.py collectstatic --noinput
    python seed_undercover.py  # Add initial word pairs
    ```
-4. **Run with Daphne (Production)**:
+5. **Run with Daphne (Production)**:
    ```bash
    # Make sure you are in the virtualenv
    daphne -b 0.0.0.0 -p 8000 lebaranrush.asgi:application
    ```
    *Tip: Use `tmux` or `systemd` to keep the process running.*
+
+### ⚠️ Important: Use the same deploy branch as your running VPS
+Before pulling, always verify which branch is currently deployed to avoid accidentally overriding production settings:
+
+```bash
+cd ~/lebaranrush
+git branch --show-current
+git remote -v
+```
+
+If production uses `main`, then always run:
+
+```bash
+git checkout main
+git pull origin main
+```
+
+If production uses `development`, then always run:
+
+```bash
+git checkout development
+git pull origin development
+```
+
+Do **not** mix branches on the same production folder unless you intentionally redeploy from a different branch.
+
+### 🔁 Updating an Existing VPS Deployment (After `git pull`)
+When new commits are pushed, use this quick deploy flow inside your existing server folder:
+
+```bash
+cd ~/lebaranrush
+source .venv/bin/activate  # or source venv/bin/activate if your env is named venv
+
+# pull latest code (example for production on main)
+git checkout main
+git pull origin main
+
+# if your production branch is development, replace both commands with development
+
+# install any new dependencies
+pip install -r requirements.txt
+
+# apply database changes (if any migration exists)
+python manage.py migrate
+
+# refresh static files (needed when templates/css/images/js changed)
+python manage.py collectstatic --noinput
+
+# optional sanity check
+python manage.py check
+```
+
+Then restart your process manager (example):
+
+```bash
+# systemd example
+sudo systemctl restart lebaranrush
+sudo systemctl status lebaranrush --no-pager
+```
+
+### ✅ What to run depending on changed files
+- If only Python logic changed (views/models/consumers): `git pull`, `pip install -r requirements.txt`, `python manage.py migrate`, restart service.
+- If `requirements.txt` changed: run `pip install -r requirements.txt` before restart.
+- If `migrations/` changed: run `python manage.py migrate`.
+- If `templates/`, `static/`, or frontend assets changed: run `python manage.py collectstatic --noinput`.
+- If `settings.py` / env usage changed: update VPS environment variables and restart service.
 
 ---
 Developed for the ultimate Lebaran gathering experience! 🌙✨
