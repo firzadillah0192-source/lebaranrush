@@ -3,9 +3,8 @@
 {% block content %}
 <div class="relative h-full flex items-center justify-center p-6 overflow-hidden bg-[#0f172a]">
     <!-- Background Layer -->
-    <div class="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-60 eid-bg-overlay">
-        <div class="absolute inset-0 bg-gradient-to-t from-[#020617] via-[#020617]/40 to-transparent"></div>
-        <div class="absolute inset-0 bg-black/30"></div>
+    <div class="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat eid-bg-overlay">
+        <div class="absolute inset-0 bg-gradient-to-b from-[#020617]/15 via-[#020617]/5 to-[#020617]/35"></div>
     </div>
 
     <!-- Festive Decorative Elements -->
@@ -126,6 +125,12 @@
                 </div>
                 <p class="text-[10px] text-center text-slate-500 font-medium">If the host shared a QR code, point your
                     camera at it to skip this step.</p>
+                <div class="flex justify-center pt-2">
+                    <a href="{% url 'join_index' %}?scan=1"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-xs font-black uppercase tracking-wider text-white">
+                        📷 Open QR Scanner
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -133,7 +138,16 @@
 
 <style>
     .eid-bg-overlay {
-        background-image: url("{% static 'images/eid_bg.png' %}");
+        background-color: #020617;
+        background-image:
+            radial-gradient(circle at 50% 12%, rgba(34, 211, 238, 0.35), transparent 28%),
+            radial-gradient(circle at 18% 80%, rgba(30, 64, 175, 0.35), transparent 34%),
+            radial-gradient(circle at 85% 78%, rgba(14, 116, 144, 0.28), transparent 30%),
+            url("{% static 'images/eid_bg.png' %}");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        filter: saturate(1.15) brightness(1.08);
     }
 
     .shadow-text {

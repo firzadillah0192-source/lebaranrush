@@ -2,6 +2,7 @@ import qrcode
 import base64
 from io import BytesIO
 from django.shortcuts import render, redirect, get_object_or_404
+from django.db import DatabaseError
 from django.urls import reverse
 from .models import Room
 from players.models import Player
@@ -47,7 +48,14 @@ def host_dashboard(request, room_code):
     return render(request, 'rooms/host_dashboard.html', context)
 
 def join_room(request, room_code):
-    room = get_object_or_404(Room, code=room_code)
+    normalized_code = room_code.upper().strip()
+    try:
+        room = Room.objects.filter(code=normalized_code).first()
+    except DatabaseError:
+        return redirect('join_index')
+
+    if not room:
+        return redirect('join_index')
     
     if request.method == 'POST':
         name = request.POST.get('name')
