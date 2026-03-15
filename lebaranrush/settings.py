@@ -64,6 +64,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'core.middleware.SiteVisitTrackingMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -181,6 +182,14 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
+
+# Whitenoise settings
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+WHITENOISE_USE_FINDERS = True
 
 redis_url = os.getenv('REDIS_URL', '').strip()
 if redis_url:

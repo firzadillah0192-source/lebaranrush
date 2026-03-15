@@ -4,3 +4,4 @@ channels-redis>=4.2
 psycopg[binary]>=3.2
 qrcode>=7.4
 Pillow>=10.0
+whitenoise[brotli]>=6.6
