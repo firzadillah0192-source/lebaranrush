@@ -214,6 +214,60 @@
         {% include 'rooms/guide_modal.html' %}
         {% block content %}{% endblock %}
     </main>
+
+    <div x-data="helpBubble()" x-init="init()" class="fixed bottom-4 right-4 z-50">
+        <button @click="open = !open" class="bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-bold px-4 py-3 rounded-full shadow-2xl">
+            💬 <span x-text="bubbleLabel"></span>
+        </button>
+
+        <div x-show="open" x-cloak class="mt-3 w-80 max-w-[90vw] bg-slate-900/95 border border-slate-700 rounded-2xl p-4 shadow-2xl">
+            <p class="font-bold text-emerald-300 mb-3" x-text="greeting"></p>
+
+            <template x-if="selectedAnswer">
+                <div class="mb-3 text-sm text-slate-200 bg-slate-800 p-3 rounded-xl" x-text="selectedAnswer"></div>
+            </template>
+
+            <div class="space-y-2 mb-3 max-h-44 overflow-y-auto custom-scrollbar">
+                <template x-for="option in options" :key="option.id">
+                    <button class="w-full text-left text-sm px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700" @click="selectedAnswer = option.answer" x-text="option.title"></button>
+                </template>
+            </div>
+
+            <div class="border-t border-slate-700 pt-2 text-xs text-slate-400">
+                <p class="mb-1 font-semibold">Contact Admin:</p>
+                <template x-for="contact in contacts" :key="contact.name + contact.value">
+                    <p><span class="uppercase" x-text="contact.type"></span>: <span x-text="contact.name + ' - ' + contact.value"></span></p>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function helpBubble() {
+            return {
+                open: false,
+                bubbleLabel: 'Butuh bantuan?',
+                greeting: 'Halo! Ada yang bisa kami bantu?',
+                options: [],
+                contacts: [],
+                selectedAnswer: '',
+                async init() {
+                    try {
+                        const res = await fetch('/helpbot/data/');
+                        if (!res.ok) return;
+                        const data = await res.json();
+                        this.bubbleLabel = data.bubble_label || this.bubbleLabel;
+                        this.greeting = data.greeting || this.greeting;
+                        this.options = data.options || [];
+                        this.contacts = data.contacts || [];
+                    } catch (e) {
+                        console.error('Help bubble unavailable', e);
+                    }
+                }
+            }
+        }
+    </script>
+
 </body>
 
 </html>
