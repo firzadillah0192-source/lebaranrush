@@ -25,9 +25,20 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-05s7!8o2uwn8s!q($ezoi*64@#tvpy_zar6)pbko#)wdl*6t-4')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'False').lower() in ('1', 'true', 'yes', 'on')
+# Default to True for development, but keep it False in production environment
+DEBUG = os.getenv('DEBUG', 'True').lower() in ('1', 'true', 'yes', 'on')
 
-ALLOWED_HOSTS = [host.strip() for host in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if host.strip()]
+# Allow main domain and local for development
+ALLOWED_HOSTS = [
+    'lebaranrush.zafirz.my.id',
+    'localhost',
+    '127.0.0.1',
+]
+
+# Merge with environment variables if present
+env_hosts = os.getenv('ALLOWED_HOSTS', '')
+if env_hosts:
+    ALLOWED_HOSTS.extend([h.strip() for h in env_hosts.split(',') if h.strip()])
 
 
 # Application definition
