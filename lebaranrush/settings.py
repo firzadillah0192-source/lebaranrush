@@ -44,6 +44,7 @@ if env_hosts:
 # Application definition
 
 INSTALLED_APPS = [
+    'whitenoise.runserver_nostatic',
     'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -186,10 +187,12 @@ STATICFILES_DIRS = [
 # Whitenoise settings
 STORAGES = {
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
     },
 }
 WHITENOISE_USE_FINDERS = True
+WHITENOISE_MANIFEST_STRICT = False
+WHITENOISE_KEEP_ONLY_HASHED_FILES = False
 
 redis_url = os.getenv('REDIS_URL', '').strip()
 if redis_url:
