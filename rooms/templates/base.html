@@ -223,41 +223,40 @@
              x-transition:leave="transition ease-in duration-200"
              x-transition:leave-start="opacity-100 scale-100 translate-y-0"
              x-transition:leave-end="opacity-0 scale-90 translate-y-4"
-             class="mb-4 w-80 max-w-[90vw] bg-slate-900/98 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-5 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+             class="mb-4 w-72 max-w-[85vw] bg-slate-900/98 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-4 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
             
-            <div class="flex justify-between items-start mb-4">
-                <p class="font-bold text-emerald-400 text-lg leading-tight" x-text="greeting"></p>
+            <div class="flex justify-between items-start mb-3">
+                <p class="font-bold text-emerald-400 text-base leading-tight" x-text="greeting"></p>
                 <button @click="open = false" class="p-1 text-slate-500 hover:text-slate-300 transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
 
             <template x-if="selectedAnswer">
-                <div class="mb-4 text-sm text-slate-300 bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-xl relative animate-pop-in">
-                    <button @click="selectedAnswer = ''" class="absolute top-2 right-2 text-slate-500 hover:text-emerald-400 p-1">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                <div class="mb-3 text-xs text-slate-300 bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-xl relative animate-pop-in">
+                    <button @click="selectedAnswer = ''" class="absolute top-1 right-1 text-slate-500 hover:text-emerald-400 p-1">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
-                    <div class="pr-6 font-medium" x-text="selectedAnswer"></div>
+                    <div class="pr-4 font-medium" x-text="selectedAnswer"></div>
                 </div>
             </template>
 
-            <div class="space-y-2 mb-5 max-h-56 overflow-y-auto custom-scrollbar pr-1">
+            <div class="space-y-1.5 mb-4 max-h-48 overflow-y-auto custom-scrollbar pr-1">
                 <template x-for="option in options" :key="option.id">
-                    <button class="w-full text-left text-sm px-4 py-3 rounded-xl bg-slate-800/50 hover:bg-slate-700 border border-slate-700/50 hover:border-emerald-500/30 transition-all duration-200 group flex justify-between items-center" 
+                    <button class="w-full text-left text-xs px-3 py-2.5 rounded-lg bg-slate-800/50 hover:bg-slate-700 border border-slate-700/50 hover:border-emerald-500/30 transition-all duration-200 group flex justify-between items-center" 
                             @click="selectedAnswer = option.answer">
                         <span x-text="option.title"></span>
-                        <svg class="w-4 h-4 text-slate-600 group-hover:text-emerald-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        <svg class="w-3 h-3 text-slate-600 group-hover:text-emerald-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                     </button>
                 </template>
             </div>
 
-            <div class="border-t border-slate-800 pt-4 text-xs text-slate-400">
-                <p class="mb-2 font-bold text-slate-500 uppercase tracking-widest text-[10px]">Kontak Admin</p>
-                <div class="space-y-2">
+            <div class="border-t border-slate-800 pt-3 text-[10px] text-slate-400">
+                <div class="space-y-1.5">
                     <template x-for="contact in contacts" :key="contact.name + contact.value">
-                        <div class="flex justify-between items-center bg-slate-800/30 px-3 py-2 rounded-lg">
-                            <span class="text-slate-400 font-medium" x-text="contact.name"></span>
-                            <span class="font-mono text-emerald-400/90 bg-emerald-400/10 px-2 py-0.5 rounded" x-text="contact.value"></span>
+                        <div class="flex justify-between items-center bg-slate-800/30 px-2 py-1.5 rounded-lg">
+                            <span class="text-slate-500 font-bold uppercase tracking-tighter" x-text="contact.name"></span>
+                            <span class="font-mono text-emerald-400/90" x-text="contact.value"></span>
                         </div>
                     </template>
                 </div>
@@ -265,10 +264,9 @@
         </div>
 
         <button @click="open = !open" 
-                class="bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-bold px-6 py-4 rounded-full shadow-[0_10px_30px_rgba(16,185,129,0.3)] flex items-center gap-3 transform active:scale-95 transition-all duration-200 group">
-            <span class="text-2xl group-hover:rotate-12 transition-transform duration-300">💬</span>
-            <span x-text="bubbleLabel" class="tracking-tight"></span>
-            <svg x-show="!open" class="w-4 h-4 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                class="bg-emerald-500 hover:bg-emerald-400 text-slate-900 w-12 h-12 rounded-full shadow-[0_10px_30px_rgba(16,185,129,0.3)] flex items-center justify-center transform active:scale-90 transition-all duration-300 group overflow-hidden">
+            <span x-show="!open" class="text-xl group-hover:scale-110 transition-transform duration-300">💬</span>
+            <svg x-show="open" class="w-6 h-6 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
         </button>
     </div>
 
