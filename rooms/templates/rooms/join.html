@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="relative h-full w-full flex items-center justify-center p-6 overflow-hidden bg-[#0f172a]">
+    <!-- Background Image -->
+    <div class="absolute inset-0 z-0 opacity-40">
+        <img src="{% static 'images/eid_bg.png' %}"
+            class="w-full h-full object-cover">
+        <div class="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-transparent to-transparent"></div>
+    </div>
+
+    <!-- Content -->
+    <div class="relative z-10 w-full max-w-xl">
+        <div class="glass p-8 md:p-12 rounded-[50px] shadow-2xl space-y-8 animate-pop-in">
+            <div class="text-center space-y-2">
+                <div class="text-lebaran-500 font-black uppercase tracking-[0.4em] text-xs">Room Established</div>
+                <h1 class="text-5xl font-black text-white italic tracking-tighter uppercase">JOIN ROOM: <span
+                        class="text-lebaran-500">{{ room.code }}</span></h1>
+                <p class="text-slate-400 font-medium italic">Who are we playing with today?</p>
+                
+                {% if error %}
+                <div class="mt-4 p-3 bg-rose-500/20 border border-rose-500/50 rounded-2xl text-rose-400 text-sm font-bold animate-pulse">
+                    ⚠️ {{ error }}
+                </div>
+                {% endif %}
+            </div>
+
+            <form method="POST" class="space-y-6">
+                {% csrf_token %}
+                <div class="relative">
+                    <input type="text" name="name" placeholder="Enter Nickname" required autofocus
+                        class="w-full bg-slate-900/50 border-4 border-slate-700 rounded-3xl p-8 text-3xl font-black text-center text-white focus:border-lebaran-500 outline-none transition-all placeholder:opacity-10">
+                    <div
+                        class="absolute -bottom-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-slate-700 rounded-full text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">
+                        Keep it fun!</div>
+                </div>
+
+                <div class="pt-4">
+                    <button type="submit"
+                        class="w-full bg-lebaran-500 hover:bg-lebaran-400 text-white font-black py-6 rounded-3xl text-xl uppercase tracking-widest shadow-lg shadow-lebaran-500/20 transition-all">
+                        ENTER THE LOBBY →
+                    </button>
+                </div>
+            </form>
+
+            <div class="pt-6 border-t border-white/5 flex items-center justify-center gap-4">
+                <div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-lg">🎮</div>
+                <p class="text-[10px] text-slate-500 font-black uppercase tracking-widest">Multiplayer Ready</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    @keyframes pop-in {
+        0% {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        100% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .animate-pop-in {
+        animation: pop-in 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+</style>
+{% endblock %}

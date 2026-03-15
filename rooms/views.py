@@ -1,0 +1,111 @@
+import qrcode
+import base64
+from io import BytesIO
+from django.shortcuts import render, redirect, get_object_or_404
+from django.db import DatabaseError
+from django.urls import reverse
+from .models import Room
+from players.models import Player
+
+def index(request):
+    return render(request, 'rooms/index.html')
+
+def join_index(request):
+    if request.method == 'POST':
+        room_code = request.POST.get('room_code', '').upper().strip()
+        if room_code:
+            return redirect('join_room', room_code=room_code)
+    return render(request, 'rooms/join_index.html')
+
+def create_room(request):
+    if not request.session.session_key:
+        request.session.create()
+    
+    # Create the room
+    room = Room.objects.create(host_session=request.session.session_key)
+    return redirect('host_dashboard', room_code=room.code)
+
+def host_dashboard(request, room_code):
+    room = get_object_or_404(Room, code=room_code)
+    
+    # Generate QR Code
+    join_url = request.build_absolute_uri(reverse('join_room', args=[room.code]))
+    
+    qr = qrcode.QRCode(version=1, box_size=10, border=5)
+    qr.add_data(join_url)
+    qr.make(fit=True)
+    
+    img = qr.make_image(fill_color="black", back_color="white")
+    buffer = BytesIO()
+    img.save(buffer, format="PNG")
+    qr_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+    
+    context = {
+        'room': room,
+        'qr_code': f"data:image/png;base64,{qr_base64}",
+        'join_url': join_url,
+    }
+    return render(request, 'rooms/host_dashboard.html', context)
+
+def join_room(request, room_code):
+    normalized_code = room_code.upper().strip()
+    try:
+        room = Room.objects.filter(code=normalized_code).first()
+    except DatabaseError:
+        return redirect('join_index')
+
+    if not room:
+        return redirect('join_index')
+    
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        if name:
+            if not request.session.session_key:
+                request.session.create()
+            
+            session_id = request.session.session_key
+            
+            # 1. Try to find existing player for this session in this room (reconnection)
+            existing_player = Player.objects.filter(room=room, session_id=session_id).first()
+            if existing_player:
+                # Allow them in, maybe update name if they changed it?
+                # Actually, better keep the original name to avoid confusion in game state
+                return redirect('player_lobby', room_code=room.code)
+
+            # 2. If it's a NEW player joining:
+            # Check room status
+            if room.status != 'waiting':
+                return render(request, 'rooms/join.html', {
+                    'room': room, 
+                    'error': 'Game sudah dimulai, kamu tidak bisa bergabung lagi.'
+                })
+
+            # Check for duplicate nickname
+            if Player.objects.filter(room=room, name__iexact=name).exists():
+                return render(request, 'rooms/join.html', {
+                    'room': room, 
+                    'error': f'Nickname "{name}" sudah digunakan!'
+                })
+            
+            # 3. Create new player
+            Player.objects.create(
+                room=room,
+                session_id=session_id,
+                name=name
+            )
+            return redirect('player_lobby', room_code=room.code)
+            
+    return render(request, 'rooms/join.html', {'room': room})
+
+def player_lobby(request, room_code):
+    room = get_object_or_404(Room, code=room_code)
+    if not request.session.session_key:
+        return redirect('join_room', room_code=room.code)
+        
+    session_id = request.session.session_key
+    try:
+        player = Player.objects.get(room=room, session_id=session_id)
+    except Player.DoesNotExist:
+        return redirect('join_room', room_code=room.code)
+        
+    return render(request, 'rooms/player_lobby.html', {'room': room, 'player': player})

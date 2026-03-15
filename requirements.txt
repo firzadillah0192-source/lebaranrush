@@ -1,0 +1,6 @@
+django>=5.0
+channels[daphne]>=4.1
+channels-redis>=4.2
+psycopg[binary]>=3.2
+qrcode>=7.4
+Pillow>=10.0

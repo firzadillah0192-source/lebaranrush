@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="relative h-full w-full flex items-center justify-center p-6 overflow-hidden bg-[#0f172a]">
+    <!-- Background Image -->
+    <div class="absolute inset-0 z-0 opacity-40">
+        <img src="{% static 'images/eid_bg.png' %}"
+            class="w-full h-full object-cover">
+        <div class="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-transparent to-transparent"></div>
+    </div>
+
+    <!-- Content -->
+    <div class="relative z-10 w-full max-w-xl">
+        <div class="glass p-8 md:p-12 rounded-[50px] shadow-2xl space-y-8 animate-pop-in">
+            <div class="flex items-center justify-between">
+                <a href="{% url 'index' %}" class="text-slate-400 hover:text-white transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 19l-7-7 7-7" />
+                    </svg>
+                </a>
+                <h2 class="text-2xl font-black text-white italic uppercase tracking-tighter">Enter Room Code</h2>
+                <div class="w-8"></div>
+            </div>
+
+            <form method="POST" class="space-y-6">
+                {% csrf_token %}
+                <div class="relative">
+                    <input type="text" name="room_code" maxlength="5" placeholder="_____" autofocus
+                        class="w-full bg-slate-900/50 border-4 border-slate-700 rounded-3xl p-6 md:p-8 text-4xl md:text-6xl font-black text-center text-lebaran-500 uppercase tracking-[0.2em] focus:border-lebaran-500 outline-none transition-all placeholder:opacity-10">
+                    <div
+                        class="absolute -bottom-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-slate-700 rounded-full text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">
+                        5 Character Code</div>
+                </div>
+
+                <div class="pt-4">
+                    <button type="submit"
+                        class="w-full bg-lebaran-500 hover:bg-lebaran-400 text-white font-black py-6 rounded-3xl text-xl uppercase tracking-widest shadow-lg shadow-lebaran-500/20 transition-all">
+                        JOIN PARTY NOW →
+                    </button>
+                </div>
+            </form>
+
+
+
+            <div class="pt-2">
+                <button type="button" id="scan-qr-btn"
+                    class="w-full bg-slate-700 hover:bg-slate-600 text-white font-black py-4 rounded-2xl text-sm uppercase tracking-widest transition-all">
+                    📷 Scan QR Code
+                </button>
+            </div>
+
+            <div id="qr-scanner-modal" class="hidden fixed inset-0 z-[70] bg-black/80 p-4">
+                <div class="max-w-md mx-auto mt-12 bg-slate-900 border border-slate-700 rounded-2xl p-4 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-black text-white uppercase">Scan Room QR</h3>
+                        <button type="button" id="close-qr-scanner" class="text-slate-400 hover:text-white">✕</button>
+                    </div>
+                    <video id="qr-video" class="w-full rounded-xl bg-black" autoplay playsinline muted></video>
+                    <p id="qr-status" class="text-xs text-slate-300">Arahkan kamera ke QR code room.</p>
+                </div>
+            </div>
+            <div class="pt-6 border-t border-white/5 space-y-4 text-center">
+                <p class="text-[10px] text-slate-500 font-black uppercase tracking-widest">Powered by Lebaran Rush
+                    Engine</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    @keyframes pop-in {
+        0% {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        100% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .animate-pop-in {
+        animation: pop-in 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+</style>
+
+<script>
+(function () {
+    const scanBtn = document.getElementById('scan-qr-btn');
+    const modal = document.getElementById('qr-scanner-modal');
+    const closeBtn = document.getElementById('close-qr-scanner');
+    const video = document.getElementById('qr-video');
+    const statusEl = document.getElementById('qr-status');
+    const input = document.querySelector('input[name="room_code"]');
+    let stream = null;
+    let detector = null;
+    let rafId = null;
+
+    function stopScanner() {
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = null;
+        if (stream) {
+            stream.getTracks().forEach((t) => t.stop());
+            stream = null;
+        }
+        video.srcObject = null;
+        modal.classList.add('hidden');
+    }
+
+    function extractCode(raw) {
+        if (!raw) return null;
+        const trimmed = raw.trim();
+        const fromPath = trimmed.match(/\/join\/([A-Za-z0-9]{1,10})/i);
+        if (fromPath) return fromPath[1].toUpperCase();
+        const simple = trimmed.match(/^[A-Za-z0-9]{4,6}$/);
+        if (simple) return simple[0].toUpperCase();
+        return null;
+    }
+
+    async function scanLoop() {
+        if (!detector || video.readyState < 2) {
+            rafId = requestAnimationFrame(scanLoop);
+            return;
+        }
+        try {
+            const barcodes = await detector.detect(video);
+            if (barcodes.length > 0) {
+                const value = barcodes[0].rawValue;
+                const code = extractCode(value);
+                if (code) {
+                    input.value = code;
+                    stopScanner();
+                    input.form.submit();
+                    return;
+                }
+            }
+        } catch (err) {
+            statusEl.textContent = 'Gagal membaca QR, coba lagi.';
+        }
+        rafId = requestAnimationFrame(scanLoop);
+    }
+
+    async function startScanner() {
+        if (!('BarcodeDetector' in window)) {
+            statusEl.textContent = 'Browser belum support QR scanner otomatis. Isi kode manual dulu ya.';
+            modal.classList.remove('hidden');
+            return;
+        }
+        detector = new BarcodeDetector({ formats: ['qr_code'] });
+        modal.classList.remove('hidden');
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            video.srcObject = stream;
+            await video.play();
+            statusEl.textContent = 'Scanner aktif. Arahkan ke QR code room.';
+            scanLoop();
+        } catch (err) {
+            statusEl.textContent = 'Camera tidak bisa diakses. Izinkan camera atau isi kode manual.';
+        }
+    }
+
+    if (scanBtn) scanBtn.addEventListener('click', startScanner);
+    if (closeBtn) closeBtn.addEventListener('click', stopScanner);
+
+    const autoScan = new URLSearchParams(window.location.search).get('scan');
+    if (autoScan === '1') {
+        startScanner();
+    }
+})();
+</script>
+
+{% endblock %}

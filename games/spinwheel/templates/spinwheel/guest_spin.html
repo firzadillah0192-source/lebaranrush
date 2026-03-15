@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full border border-lebaran-100 flex flex-col items-center"
+    x-data="guestSpin()" x-init="init()">
+
+    <div class="text-center mb-8">
+        <h2 class="text-3xl font-black text-lebaran-900 mb-2">Visitor Spin!</h2>
+        <p class="text-gray-500">Welcome to our open house! Enjoy a free spin.</p>
+    </div>
+
+    <div x-show="!isSpinning && !result" class="w-full space-y-6">
+        <div>
+            <label class="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Your Name</label>
+            <input type="text" x-model="guestName" placeholder="Enter name..."
+                class="w-full px-4 py-4 rounded-xl border-2 border-gray-100 focus:border-lebaran-400 focus:ring-4 focus:ring-lebaran-50 outline-none transition-all text-lg font-bold">
+        </div>
+
+        <button @click="spinNow" :disabled="!guestName.trim()"
+            class="w-full bg-lebaran-500 hover:bg-lebaran-600 disabled:bg-gray-200 disabled:cursor-not-allowed text-white font-black py-5 px-6 rounded-2xl transition-all shadow-xl text-xl uppercase tracking-widest transform hover:-translate-y-1">
+            🎡 Spin the Wheel
+        </button>
+    </div>
+
+    <!-- Spin Animation Placeholder -->
+    <div x-show="isSpinning" class="flex flex-col items-center justify-center py-12" style="display: none;">
+        <div class="relative w-48 h-48 mb-8">
+            <div class="absolute inset-0 border-8 border-lebaran-100 rounded-full"></div>
+            <div class="w-full h-full rounded-full border-8 border-lebaran-500 border-t-transparent animate-spin"></div>
+            <div class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 text-3xl">⬇️</div>
+        </div>
+        <p class="text-xl font-black text-lebaran-700 animate-pulse">Good Luck, <span x-text="guestName"></span>!</p>
+    </div>
+
+    <!-- Result Display -->
+    <div x-show="result" class="flex flex-col items-center justify-center py-8 text-center" style="display: none;">
+        <div class="text-6xl mb-6">🎉</div>
+        <h3 class="text-2xl font-black text-gray-800 mb-2">Congratulations!</h3>
+        <p class="text-gray-500 mb-6">You won:</p>
+        <div
+            class="bg-gradient-to-br from-yellow-400 to-orange-500 text-white p-6 rounded-2xl shadow-lg border-4 border-white mb-8 w-full">
+            <h4 class="text-3xl font-black uppercase tracking-widest" x-text="result.label">REWARD!</h4>
+        </div>
+        <div class="text-sm text-gray-400">Thank you for visiting!</div>
+    </div>
+</div>
+
+<script>
+    function guestSpin() {
+        return {
+            guestName: '',
+            isSpinning: false,
+            result: null,
+            token: '{{ token.token }}',
+            roomCode: '{{ token.room.code }}',
+
+            init() {
+                // Connect to potentially show onto host screen too
+                const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
+                this.socket = new WebSocket(wsScheme + '://' + window.location.host + '/ws/room/' + this.roomCode + '/');
+            },
+
+            async spinNow() {
+                if (!this.guestName.trim()) return;
+                this.isSpinning = true;
+
+                // Notify host via socket (optional but creates the moment)
+                this.socket.send(JSON.stringify({
+                    action: 'room_message',
+                    type: 'guest_spin_start',
+                    name: this.guestName
+                }));
+
+                try {
+                    const formData = new FormData();
+                    formData.append('name', this.guestName);
+                    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+                    const res = await fetch(`/games/spinwheel/guest-spin/${this.token}/process/`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await res.json();
+
+                    // Wait for dramatic effect
+                    setTimeout(() => {
+                        this.isSpinning = false;
+                        if (data.success) {
+                            this.result = data.reward;
+                            // Notify host of result
+                            this.socket.send(JSON.stringify({
+                                action: 'room_message',
+                                type: 'guest_spin_result',
+                                name: this.guestName,
+                                reward: data.reward
+                            }));
+                        } else {
+                            alert(data.error || "Token already used!");
+                        }
+                    }, 3000);
+                } catch (e) {
+                    this.isSpinning = false;
+                    alert("Something went wrong. Please try again.");
+                }
+            }
+        }
+    }
+</script>
+{% endblock %}
