@@ -1,0 +1,88 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Lebaran Rush</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen p-6 md:p-10">
+    <div class="max-w-7xl mx-auto space-y-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-black italic">Admin Dashboard</h1>
+                <p class="text-slate-400">Kelola room, pantau traffic, dan monitor kapasitas.</p>
+            </div>
+            <div class="flex gap-3">
+                <a href="/admin/" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700">Django Admin</a>
+                <a href="/" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500">Ke Landing Page</a>
+            </div>
+        </div>
+
+        <div class="grid gap-4 md:grid-cols-4">
+            <div class="rounded-2xl bg-slate-900 p-4 border border-slate-800"><p class="text-sm text-slate-400">Total Room</p><p class="text-3xl font-black">{{ total_rooms }}</p></div>
+            <div class="rounded-2xl bg-slate-900 p-4 border border-slate-800"><p class="text-sm text-slate-400">Room Playing</p><p class="text-3xl font-black text-emerald-400">{{ active_rooms }}</p></div>
+            <div class="rounded-2xl bg-slate-900 p-4 border border-slate-800"><p class="text-sm text-slate-400">Hits Hari Ini</p><p class="text-3xl font-black">{{ hits_today }}</p></div>
+            <div class="rounded-2xl bg-slate-900 p-4 border border-slate-800"><p class="text-sm text-slate-400">Visitor 24 Jam</p><p class="text-3xl font-black">{{ unique_visitors_24h }}</p></div>
+        </div>
+
+        <div class="grid gap-4 md:grid-cols-2">
+            <div class="rounded-2xl bg-slate-900 p-5 border border-slate-800 space-y-2">
+                <h2 class="text-lg font-bold">Traffic Ringkas</h2>
+                <p class="text-slate-300">Total hits: <b>{{ total_hits }}</b></p>
+                <p class="text-slate-300">Unique IP 7 hari: <b>{{ unique_ips_7d }}</b></p>
+                <p class="text-slate-300">Waiting room: <b>{{ waiting_rooms }}</b></p>
+            </div>
+            <div class="rounded-2xl bg-slate-900 p-5 border border-slate-800 space-y-2">
+                <h2 class="text-lg font-bold">Akses Admin Cepat</h2>
+                <ul class="text-sm text-slate-300 space-y-1">
+                    <li><a class="text-emerald-400" href="/admin/rooms/room/">Kelola Rooms</a></li>
+                    <li><a class="text-emerald-400" href="/admin/games/">Kelola Data Game</a></li>
+                    <li><a class="text-emerald-400" href="/admin/undercover/undercoverword/">Word Undercover</a></li>
+                    <li><a class="text-emerald-400" href="/admin/core/helpoption/">Opsi Chatbot</a></li>
+                    <li><a class="text-emerald-400" href="/admin/core/helpcontact/">Contact Admin</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="rounded-2xl bg-slate-900 p-5 border border-slate-800">
+            <h2 class="text-xl font-bold mb-4">Daftar Room Terbaru</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-slate-400 border-b border-slate-800">
+                            <th class="py-2 pr-3">Kode</th>
+                            <th class="py-2 pr-3">Status</th>
+                            <th class="py-2 pr-3">Players</th>
+                            <th class="py-2 pr-3">Sessions</th>
+                            <th class="py-2 pr-3">Dibuat</th>
+                            <th class="py-2">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for room in rooms %}
+                        <tr class="border-b border-slate-800/80">
+                            <td class="py-2 pr-3 font-bold">{{ room.code }}</td>
+                            <td class="py-2 pr-3">{{ room.status }}</td>
+                            <td class="py-2 pr-3">{{ room.player_count }}</td>
+                            <td class="py-2 pr-3">{{ room.active_session_count }}</td>
+                            <td class="py-2 pr-3">{{ room.created_at }}</td>
+                            <td class="py-2">
+                                <form method="post" onsubmit="return confirm('Hapus room {{ room.code }}?');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="room_id" value="{{ room.id }}">
+                                    <button class="px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-500">Hapus</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6" class="py-6 text-center text-slate-500">Belum ada room.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
