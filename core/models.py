@@ -53,6 +53,40 @@ class HelpOption(models.Model):
         return self.title
 
 
+class SupportTicket(models.Model):
+    STATUS_CHOICES = (
+        ('open', 'Open'),
+        ('closed', 'Closed'),
+    )
+    id = models.BigAutoField(primary_key=True)
+    session_key = models.CharField(max_length=64, db_index=True)
+    phone = models.CharField(max_length=20, blank=True, null=True)
+    description = models.TextField()
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='open')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at']
+
+    def __str__(self):
+        return f"Ticket #{self.id} - {self.status}"
+
+class SupportMessage(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    ticket = models.ForeignKey(SupportTicket, on_delete=models.CASCADE, related_name='messages')
+    sender_type = models.CharField(max_length=10, choices=(('user', 'User'), ('admin', 'Admin')))
+    message = models.TextField()
+    attachment = models.FileField(upload_to='support_attachments/', blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"Msg from {self.sender_type} on Ticket #{self.ticket.id}"
+
+
 class ChatbotSetting(models.Model):
     id = models.BigAutoField(primary_key=True)
     greeting = models.CharField(max_length=255, default='Halo! Ada yang bisa kami bantu?')

@@ -4,197 +4,422 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Lebaran Rush</title>
+    <title>Admin Panel - Lebaran Rush</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+        .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
+        input, textarea, select { background: #1e293b !important; border-color: #334155 !important; }
+    </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen p-6 md:p-10">
-    <div class="max-w-7xl mx-auto space-y-6">
-        <div class="flex items-center justify-between">
-            <div>
-                <h1 class="text-3xl font-black italic">Admin Dashboard</h1>
-                <p class="text-slate-400">Kelola room, pantau traffic, dan monitor kapasitas.</p>
-            </div>
-            <div class="flex gap-3 items-center">
-                <form method="post" onsubmit="return confirm('Bersihkan semua room lama (24 jam) dan finished (1 jam)?');">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="cleanup_rooms">
-                    <button class="px-4 py-2 rounded-xl bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 border border-amber-600/30 font-bold flex items-center gap-2 transition-all">
-                        <span class="text-lg">🧹</span> Cleanup Rooms
-                    </button>
-                </form>
-                <a href="/admin/" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm font-medium">Django Admin</a>
-                <a href="/" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-sm font-medium">Landing Page</a>
-            </div>
+<body class="bg-[#020617] text-slate-100 min-h-screen font-sans selection:bg-emerald-500/30" x-data="{ tab: 'monitor', activeTicket: null }">
+    <!-- Sidebar / Nav -->
+    <div class="fixed top-0 left-0 bottom-0 w-64 border-r border-slate-800 bg-slate-950 hidden lg:block z-50">
+        <div class="p-8">
+            <h1 class="text-2xl font-black italic tracking-tighter text-emerald-400">LEBARAN<span class="text-white">RUSH</span></h1>
+            <p class="text-[10px] uppercase font-bold tracking-[0.3em] text-slate-500 mt-1">Admin Control</p>
         </div>
+        <nav class="mt-4 px-4 space-y-2">
+            <button @click="tab = 'monitor'" :class="tab === 'monitor' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'text-slate-400 hover:bg-slate-900'" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-transparent transition-all font-bold text-sm">
+                <span>📊</span> Monitor & Traffic
+            </button>
+            <button @click="tab = 'support'" :class="tab === 'support' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'text-slate-400 hover:bg-slate-900'" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-transparent transition-all font-bold text-sm">
+                <span>💬</span> Help & Chatbot
+            </button>
+            <button @click="tab = 'tickets'" :class="tab === 'tickets' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'text-slate-400 hover:bg-slate-900'" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-transparent transition-all font-bold text-sm">
+                <span>🎟️</span> Support Tickets
+            </button>
+            <div class="pt-8 pb-4">
+                <p class="px-4 text-[10px] uppercase font-bold tracking-[0.3em] text-slate-600">Quick Tools</p>
+            </div>
+            <form method="post" onsubmit="return confirm('Bersihkan semua room lama?');">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="cleanup_rooms">
+                <button class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-amber-400 hover:bg-amber-400/5 transition-all font-bold text-sm">
+                    <span>🧹</span> Cleanup Rooms
+                </button>
+            </form>
+            <a href="/admin/" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-slate-900 transition-all font-bold text-sm">
+                <span>⚙️</span> Full Backend
+            </a>
+            <a href="/" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-slate-900 transition-all font-bold text-sm">
+                <span>🏠</span> Back to Site
+            </a>
+        </nav>
+    </div>
 
-        <div class="grid gap-4 md:grid-cols-4">
-            <div class="rounded-2xl bg-slate-900 p-4 border border-slate-800"><p class="text-sm text-slate-400">Total Room</p><p class="text-3xl font-black">{{ total_rooms }}</p></div>
-            <div class="rounded-2xl bg-slate-900 p-4 border border-slate-800"><p class="text-sm text-slate-400">Total Player</p><p class="text-3xl font-black text-blue-400">{{ total_players }}</p></div>
-            <div class="rounded-2xl bg-slate-900 p-4 border border-slate-800"><p class="text-sm text-slate-400">Room Playing</p><p class="text-3xl font-black text-emerald-400">{{ active_rooms }}</p></div>
-            <div class="rounded-2xl bg-slate-900 p-4 border border-slate-800"><p class="text-sm text-slate-400">Hits Hari Ini</p><p class="text-3xl font-black">{{ hits_today }}</p></div>
-        </div>
+    <!-- Main Content -->
+    <main class="lg:ml-64 p-6 md:p-10">
+        <!-- Monitoring Tab -->
+        <div x-show="tab === 'monitor'" x-transition x-cloak>
+            <div class="mb-8">
+                <h2 class="text-4xl font-black">Dashboard</h2>
+                <p class="text-slate-400">Statistik real-time dan manajemen room permainan.</p>
+            </div>
 
-        <div class="grid gap-6 lg:grid-cols-2">
-            <!-- Monitor Rooms -->
-            <div class="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden">
-                <div class="p-5 border-b border-slate-800 bg-slate-900/50 flex justify-between items-center">
-                    <h2 class="text-xl font-bold flex items-center gap-2">
-                        <span class="text-emerald-400">🎮</span> Monitor Rooms
-                    </h2>
-                    <span class="text-xs text-slate-500">50 Terbaru</span>
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-10">
+                <div class="rounded-3xl bg-slate-900 p-6 border border-slate-800 shadow-xl">
+                    <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Active Rooms</p>
+                    <p class="text-4xl font-black text-emerald-400">{{ active_rooms }}</p>
                 </div>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-xs">
-                        <thead>
-                            <tr class="text-left text-slate-500 uppercase tracking-wider">
-                                <th class="py-3 px-4">Room</th>
-                                <th class="py-3 px-4">Status</th>
-                                <th class="py-3 px-4">P/S</th>
-                                <th class="py-3 px-4">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-800">
-                            {% for room in rooms %}
-                            <tr class="hover:bg-slate-800/30 transition-colors">
-                                <td class="py-3 px-4">
-                                    <div class="font-bold text-slate-200">{{ room.code }}</div>
-                                    <div class="text-[10px] text-slate-500">{{ room.created_at|date:"d/m H:i" }}</div>
-                                </td>
-                                <td class="py-3 px-4">
-                                    <span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold 
-                                        {% if room.status == 'playing' %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20
-                                        {% else %}bg-slate-800 text-slate-400 border border-slate-700{% endif %}">
-                                        {{ room.status }}
-                                    </span>
-                                </td>
-                                <td class="py-3 px-4">
-                                    <span class="text-slate-300 font-medium">{{ room.player_count }}</span>
-                                    <span class="text-slate-600">/</span>
-                                    <span class="text-slate-500">{{ room.active_session_count }}</span>
-                                </td>
-                                <td class="py-3 px-4">
-                                    <form method="post" onsubmit="return confirm('Hapus room {{ room.code }}? Semua data terkait akan hilang.');">
+                <div class="rounded-3xl bg-slate-900 p-6 border border-slate-800 shadow-xl">
+                    <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Total Players</p>
+                    <p class="text-4xl font-black">{{ total_players }}</p>
+                </div>
+                <div class="rounded-3xl bg-slate-900 p-6 border border-slate-800 shadow-xl">
+                    <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Today Traffic</p>
+                    <p class="text-4xl font-black">{{ hits_today }} <span class="text-xs text-slate-600">hits</span></p>
+                </div>
+                <div class="rounded-3xl bg-slate-900 p-6 border border-slate-800 shadow-xl">
+                    <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Unique Visitor</p>
+                    <p class="text-4xl font-black text-blue-400">{{ unique_visitors_24h }}</p>
+                </div>
+            </div>
+
+            <div class="grid gap-8 lg:grid-cols-2">
+                <!-- Room Table -->
+                <div class="rounded-[40px] bg-slate-900/50 border border-slate-800 overflow-hidden shadow-2xl">
+                    <div class="p-6 border-b border-slate-800 bg-slate-900/80 flex justify-between items-center">
+                        <h3 class="font-black italic uppercase tracking-tighter text-xl">Room Control</h3>
+                        <span class="text-xs bg-slate-800 px-3 py-1 rounded-full text-slate-400">50 Terbaru</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm border-collapse">
+                            <thead>
+                                <tr class="text-slate-500 text-[10px] uppercase font-black tracking-widest">
+                                    <th class="py-4 px-6 border-b border-slate-800">Code</th>
+                                    <th class="py-4 px-6 border-b border-slate-800">Status</th>
+                                    <th class="py-4 px-6 border-b border-slate-800 text-center">Players</th>
+                                    <th class="py-4 px-6 border-b border-slate-800 text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-800/50">
+                                {% for room in rooms %}
+                                <tr class="hover:bg-white/[0.02] transition-colors group">
+                                    <td class="py-4 px-6">
+                                        <div class="font-black text-lg group-hover:text-emerald-400 transition-colors">{{ room.code }}</div>
+                                        <div class="text-[10px] text-slate-500">{{ room.created_at|date:"H:i" }} WIB</div>
+                                    </td>
+                                    <td class="py-4 px-6 text-[10px]">
+                                        {% if room.status == 'playing' %}
+                                        <span class="px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 font-black border border-emerald-500/20 uppercase tracking-wider">In Game</span>
+                                        {% else %}
+                                        <span class="px-2 py-1 rounded-lg bg-slate-800 text-slate-500 font-bold uppercase tracking-wider">Waiting</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="py-4 px-6 text-center">
+                                        <span class="text-xl font-black text-slate-300">{{ room.player_count }}</span>
+                                    </td>
+                                    <td class="py-4 px-6 text-right">
+                                        <form method="post" onsubmit="return confirm('Hapus room ini?');">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="delete_room">
+                                            <input type="hidden" name="room_id" value="{{ room.id }}">
+                                            <button class="p-2 text-rose-500/50 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-all">🗑️</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Latest Players -->
+                <div class="rounded-[40px] bg-slate-900/50 border border-slate-800 overflow-hidden shadow-2xl">
+                    <div class="p-6 border-b border-slate-800 bg-slate-900/80">
+                        <h3 class="font-black italic uppercase tracking-tighter text-xl text-blue-400">Joined Players</h3>
+                    </div>
+                    <div class="p-2 overflow-y-auto max-h-[500px]">
+                        {% for player in latest_players %}
+                        <div class="flex items-center justify-between p-4 hover:bg-white/[0.03] rounded-3xl transition-all">
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-xl shadow-inner border border-slate-700">👤</div>
+                                <div>
+                                    <div class="font-black text-slate-200 uppercase tracking-tight">{{ player.name }}</div>
+                                    <div class="text-[10px] text-blue-400 font-black uppercase">Room {{ player.room.code }}</div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-emerald-400 font-black text-lg">{{ player.score }}</span>
+                                <span class="text-[10px] text-slate-600 block uppercase font-bold">Points</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Support/Chatbot Management Tab -->
+        <div x-show="tab === 'support'" x-transition x-cloak>
+            <div class="mb-8">
+                <h2 class="text-4xl font-black">Help & Chatbot</h2>
+                <p class="text-slate-400">Atur pesan sambutan, FAQ, dan kontak bantuan admin.</p>
+            </div>
+
+            <div class="grid gap-8 lg:grid-cols-3">
+                <!-- Chatbot Primary Settings -->
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="rounded-3xl bg-slate-900 p-8 border border-slate-800 shadow-2xl">
+                        <h3 class="text-sm font-black uppercase tracking-widest text-slate-500 mb-6">Global Config</h3>
+                        <form method="post" class="space-y-4">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="save_chatbot_setting">
+                            <input type="hidden" name="id" value="{{ chatbot_setting.id }}">
+                            
+                            <div>
+                                <label class="text-[10px] uppercase font-black text-slate-500 tracking-wider mb-2 block">Greeting Message</label>
+                                <input type="text" name="greeting" value="{{ chatbot_setting.greeting|default:'Halo! Ada yang bisa kami bantu?' }}" class="w-full px-4 py-3 rounded-xl outline-none focus:ring-2 ring-emerald-500/50">
+                            </div>
+                            
+                            <div>
+                                <label class="text-[10px] uppercase font-black text-slate-500 tracking-wider mb-2 block">Bubble Label</label>
+                                <input type="text" name="bubble_label" value="{{ chatbot_setting.bubble_label|default:'Butuh bantuan?' }}" class="w-full px-4 py-3 rounded-xl outline-none focus:ring-2 ring-emerald-500/50">
+                            </div>
+
+                            <div class="flex items-center gap-3 py-2">
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" name="is_active" class="sr-only peer" {% if chatbot_setting.is_active %}checked{% endif %}>
+                                    <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                                </label>
+                                <span class="text-xs font-bold text-slate-400">Status Chatbot Aktif</span>
+                            </div>
+
+                            <button type="submit" class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-2xl transition-all shadow-lg shadow-emerald-600/20 uppercase tracking-widest text-xs">Simpan Pengaturan</button>
+                        </form>
+                    </div>
+
+                    <div class="rounded-3xl bg-slate-900 p-8 border border-slate-800 shadow-2xl">
+                        <h3 class="text-sm font-black uppercase tracking-widest text-slate-500 mb-6">Support Contacts</h3>
+                        <div class="space-y-4 mb-6">
+                            {% for contact in help_contacts %}
+                            <div class="flex items-center justify-between p-3 bg-slate-950 rounded-2xl border border-slate-800 group">
+                                <div class="flex items-center gap-3">
+                                    <div class="text-xl">
+                                        {% if contact.contact_type == 'whatsapp' %}🟢{% elif contact.contact_type == 'email' %}✉️{% else %}📞{% endif %}
+                                    </div>
+                                    <div>
+                                        <div class="text-xs font-black">{{ contact.name }}</div>
+                                        <div class="text-[10px] text-slate-500">{{ contact.contact_value }}</div>
+                                    </div>
+                                </div>
+                                <form method="post">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="delete_help_contact">
+                                    <input type="hidden" name="id" value="{{ contact.id }}">
+                                    <button class="opacity-0 group-hover:opacity-100 transition-opacity text-rose-500">🗑️</button>
+                                </form>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Add Contact Form -->
+                        <form method="post" class="space-y-3 pt-4 border-t border-slate-800">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="save_help_contact">
+                            <input type="text" name="name" placeholder="Name" class="w-full px-3 py-2 text-xs rounded-lg" required>
+                            <div class="flex gap-2">
+                                <select name="type" class="px-2 py-2 text-xs rounded-lg bg-slate-800">
+                                    <option value="whatsapp">WA</option>
+                                    <option value="email">Email</option>
+                                    <option value="phone">Telp</option>
+                                </select>
+                                <input type="text" name="value" placeholder="Value (No WA/Email)" class="flex-1 px-3 py-2 text-xs rounded-lg" required>
+                            </div>
+                            <button type="submit" class="w-full py-2 bg-slate-800 hover:bg-emerald-800 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all">Tambah Kontak</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- FAQ / Help Options Management -->
+                <div class="lg:col-span-2">
+                    <div class="rounded-[40px] bg-slate-900 p-8 border border-slate-800 shadow-2xl">
+                        <div class="flex justify-between items-center mb-8">
+                            <h3 class="text-xl font-black italic uppercase italic tracking-tighter">Manage FAQ List</h3>
+                        </div>
+
+                        <div class="space-y-4">
+                            {% for option in help_options %}
+                            <div x-data="{ expanded: false }" class="rounded-3xl border border-slate-800 overflow-hidden bg-slate-950/50">
+                                <div class="p-5 flex justify-between items-center cursor-pointer hover:bg-white/[0.02]" @click="expanded = !expanded">
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-[10px] bg-slate-800 w-6 h-6 flex items-center justify-center rounded-full text-slate-500">{{ option.sort_order }}</span>
+                                        <span class="font-bold text-slate-200">{{ option.title }}</span>
+                                    </div>
+                                    <div class="flex items-center gap-4">
+                                        <span :class="expanded ? 'rotate-180' : ''" class="transition-transform text-slate-600">▼</span>
+                                    </div>
+                                </div>
+                                <div x-show="expanded" class="p-6 bg-slate-900/50 border-t border-slate-800 space-y-4">
+                                    <form method="post" class="space-y-4">
                                         {% csrf_token %}
-                                        <input type="hidden" name="action" value="delete_room">
-                                        <input type="hidden" name="room_id" value="{{ room.id }}">
-                                        <button class="text-rose-500 hover:text-rose-400 font-bold p-1 transition-colors" title="Delete Room">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                        </button>
+                                        <input type="hidden" name="action" value="save_help_option">
+                                        <input type="hidden" name="id" value="{{ option.id }}">
+                                        
+                                        <div class="grid gap-4 sm:grid-cols-4">
+                                            <div class="sm:col-span-3">
+                                                <label class="text-[10px] uppercase font-black text-slate-600 tracking-wider mb-2 block">Judul Pertanyaan</label>
+                                                <input type="text" name="title" value="{{ option.title }}" class="w-full px-4 py-3 rounded-xl">
+                                            </div>
+                                            <div>
+                                                <label class="text-[10px] uppercase font-black text-slate-600 tracking-wider mb-2 block">Urutan</label>
+                                                <input type="number" name="sort_order" value="{{ option.sort_order }}" class="w-full px-4 py-3 rounded-xl text-center">
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="text-[10px] uppercase font-black text-slate-600 tracking-wider mb-2 block">Jawaban / Konten</label>
+                                            <textarea name="answer" rows="3" class="w-full px-4 py-3 rounded-xl">{{ option.answer }}</textarea>
+                                        </div>
+                                        <div class="flex items-center justify-between">
+                                            <button type="submit" class="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl text-[10px] uppercase tracking-widest">Update Data</button>
+                                            <button type="button" @click="$refs.deleteForm.submit()" class="text-rose-500 text-[10px] font-black uppercase hover:underline">Hapus Opsi</button>
+                                        </div>
                                     </form>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr><td colspan="4" class="py-10 text-center text-slate-600 italic">Belum ada room aktif.</td></tr>
+                                    <form method="post" x-ref="deleteForm" class="hidden">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="delete_help_option">
+                                        <input type="hidden" name="id" value="{{ option.id }}">
+                                    </form>
+                                </div>
+                            </div>
                             {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
 
-            <!-- Monitor Players -->
-            <div class="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden">
-                <div class="p-5 border-b border-slate-800 bg-slate-900/50 flex justify-between items-center">
-                    <h2 class="text-xl font-bold flex items-center gap-2">
-                        <span class="text-blue-400">👥</span> Monitor Players
-                    </h2>
-                    <span class="text-xs text-slate-500">20 Terbaru</span>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-xs">
-                        <thead>
-                            <tr class="text-left text-slate-500 uppercase tracking-wider">
-                                <th class="py-3 px-4">Player</th>
-                                <th class="py-3 px-4">Room</th>
-                                <th class="py-3 px-4">Score</th>
-                                <th class="py-3 px-4">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-800">
-                            {% for player in latest_players %}
-                            <tr class="hover:bg-slate-800/30 transition-colors">
-                                <td class="py-3 px-4">
-                                    <div class="font-bold text-slate-200">{{ player.name }}</div>
-                                    <div class="text-[10px] text-slate-500 font-mono">{{ player.id|stringformat:"s"|slice:":8" }}...</div>
-                                </td>
-                                <td class="py-3 px-4">
-                                    <span class="font-mono text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded border border-blue-400/20">{{ player.room.code }}</span>
-                                </td>
-                                <td class="py-3 px-4">
-                                    <span class="text-slate-300 font-bold">{{ player.score }}</span>
-                                    <span class="text-[10px] text-slate-500 ml-1">pts</span>
-                                </td>
-                                <td class="py-3 px-4">
-                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold 
-                                        {% if player.status == 'active' %}text-emerald-400 bg-emerald-400/10
-                                        {% elif player.status == 'disconnected' %}text-rose-400 bg-rose-400/10
-                                        {% else %}text-slate-500 bg-slate-800{% endif %}">
-                                        {{ player.get_status_display }}
-                                    </span>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr><td colspan="4" class="py-10 text-center text-slate-600 italic">Belum ada pemain bergabung.</td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                            <!-- New FAQ Toggle -->
+                            <div x-data="{ show: false }" class="pt-6">
+                                <button @click="show = !show" class="w-full py-4 border-2 border-dashed border-slate-800 hover:border-emerald-500/50 hover:bg-emerald-500/5 rounded-[30px] text-slate-500 hover:text-emerald-400 font-black italic transition-all uppercase tracking-widest text-sm" x-show="!show">
+                                    + Tambah Opsi Pertanyaan Baru
+                                </button>
+                                
+                                <div x-show="show" x-transition class="p-8 border-2 border-emerald-500/30 bg-emerald-500/[0.02] rounded-[40px] space-y-4">
+                                    <div class="flex justify-between items-center mb-4">
+                                        <h4 class="font-black text-emerald-400 uppercase tracking-tight">Form Opsi Baru</h4>
+                                        <button @click="show = false" class="text-slate-500">Tutup</button>
+                                    </div>
+                                    <form method="post" class="space-y-4">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="save_help_option">
+                                        <div class="grid gap-4 sm:grid-cols-4">
+                                            <input type="text" name="title" placeholder="Pertanyaan baru..." class="sm:col-span-3 w-full px-4 py-3 rounded-xl" required>
+                                            <input type="number" name="sort_order" value="1" class="w-full px-4 py-3 rounded-xl text-center">
+                                        </div>
+                                        <textarea name="answer" placeholder="Masukkan jawaban di sini..." rows="4" class="w-full px-4 py-3 rounded-xl" required></textarea>
+                                        <button type="submit" class="w-full py-4 bg-emerald-600 text-white font-black rounded-2xl uppercase tracking-widest text-xs">Simpan FAQ Baru</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="grid gap-6 lg:grid-cols-3">
-            <div class="rounded-2xl bg-slate-900 p-5 border border-slate-800 space-y-3">
-                <h2 class="text-lg font-bold flex items-center gap-2">
-                    <span class="text-purple-400">📊</span> Traffic Ringkas
-                </h2>
-                <div class="grid grid-cols-2 gap-2 text-sm">
-                    <div class="bg-slate-800/50 p-3 rounded-xl border border-slate-700/50">
-                        <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Total Hits</p>
-                        <p class="text-xl font-black">{{ total_hits }}</p>
-                    </div>
-                    <div class="bg-slate-800/50 p-3 rounded-xl border border-slate-700/50">
-                        <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Unique IP</p>
-                        <p class="text-xl font-black">{{ unique_ips_7d }}</p>
-                    </div>
-                </div>
-                <div class="bg-slate-800/50 p-3 rounded-xl border border-slate-700/50">
-                    <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Visitor 24 Jam</p>
-                    <p class="text-xl font-black text-emerald-400">{{ unique_visitors_24h }}</p>
-                </div>
+        <!-- Support Tickets Tab -->
+        <div x-show="tab === 'tickets'" x-transition x-cloak>
+            <div class="mb-8">
+                <h2 class="text-4xl font-black text-emerald-400">Support Tickets</h2>
+                <p class="text-slate-400">Kelola tiket bantuan dari user dan kirim balasan chat.</p>
             </div>
 
-            <div class="lg:col-span-2 rounded-2xl bg-slate-900 p-5 border border-slate-800">
-                <h2 class="text-lg font-bold mb-4 flex items-center gap-2">
-                    <span class="text-amber-400">⚡</span> Akses Admin Cepat
-                </h2>
-                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    <a href="/admin/rooms/room/" class="flex flex-col p-3 rounded-xl bg-slate-800/50 hover:bg-slate-700 border border-slate-700/50 transition-all group">
-                        <span class="text-sm font-bold text-slate-200 group-hover:text-emerald-400 transition-colors">Kelola Rooms</span>
-                        <span class="text-[10px] text-slate-500">Database rooms</span>
-                    </a>
-                    <a href="/admin/games/" class="flex flex-col p-3 rounded-xl bg-slate-800/50 hover:bg-slate-700 border border-slate-700/50 transition-all group">
-                        <span class="text-sm font-bold text-slate-200 group-hover:text-amber-400 transition-colors">Data Game</span>
-                        <span class="text-[10px] text-slate-500">Settings & Content</span>
-                    </a>
-                    <a href="/admin/undercover/undercoverword/" class="flex flex-col p-3 rounded-xl bg-slate-800/50 hover:bg-slate-700 border border-slate-700/50 transition-all group">
-                        <span class="text-sm font-bold text-slate-200 group-hover:text-rose-400 transition-colors">Undercover</span>
-                        <span class="text-[10px] text-slate-500">Word list</span>
-                    </a>
-                    <a href="/admin/core/helpoption/" class="flex flex-col p-3 rounded-xl bg-slate-800/50 hover:bg-slate-700 border border-slate-700/50 transition-all group">
-                        <span class="text-sm font-bold text-slate-200 group-hover:text-blue-400 transition-colors">Opsi Chatbot</span>
-                        <span class="text-[10px] text-slate-500">Manage FAQ</span>
-                    </a>
-                    <a href="/admin/core/helpcontact/" class="flex flex-col p-3 rounded-xl bg-slate-800/50 hover:bg-slate-700 border border-slate-700/50 transition-all group">
-                        <span class="text-sm font-bold text-slate-200 group-hover:text-emerald-400 transition-colors">Kontak Admin</span>
-                        <span class="text-[10px] text-slate-500">Config support</span>
-                    </a>
-                    <a href="/admin/" class="flex flex-col p-3 rounded-xl bg-slate-800 border border-slate-700 hover:bg-slate-700 transition-all group">
-                        <span class="text-sm font-bold text-slate-200">Full Admin</span>
-                        <span class="text-[10px] text-slate-500">Django Backend</span>
-                    </a>
+            <div class="grid gap-8 lg:grid-cols-12">
+                <!-- Ticket List -->
+                <div class="lg:col-span-4 rounded-[30px] bg-slate-900 border border-slate-800 overflow-hidden shadow-2xl h-[calc(100vh-250px)] flex flex-col">
+                    <div class="p-4 border-b border-slate-800 bg-slate-950/50">
+                        <h3 class="text-xs font-black uppercase tracking-widest text-slate-500">All Tickets</h3>
+                    </div>
+                    <div class="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-2">
+                        {% for ticket in tickets %}
+                        <div @click="activeTicket = {{ ticket.id }}" 
+                             :class="activeTicket === {{ ticket.id }} ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-slate-950/50 border-slate-800 hover:bg-slate-900'"
+                             class="p-4 rounded-2xl border transition-all cursor-pointer group">
+                            <div class="flex justify-between items-start mb-1">
+                                <span class="text-[10px] font-black uppercase text-slate-500">#{{ ticket.id }}</span>
+                                <span class="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter" 
+                                      :class="'{{ ticket.status }}' === 'open' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500'">
+                                    {{ ticket.status }}
+                                </span>
+                            </div>
+                            <div class="font-bold text-xs text-slate-200 truncate">{{ ticket.description }}</div>
+                            <div class="flex justify-between items-center mt-2">
+                                <span class="text-[10px] font-bold text-slate-600">{{ ticket.created_at|date:"d M, H:i" }}</span>
+                                {% if ticket.phone %}<span class="text-[9px] font-black text-blue-500/70">📱 {{ ticket.phone }}</span>{% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Chat View -->
+                <div class="lg:col-span-8 space-y-4">
+                    {% for ticket in tickets %}
+                    <template x-if="activeTicket === {{ ticket.id }}">
+                        <div class="rounded-[30px] bg-slate-900 border border-slate-800 overflow-hidden shadow-2xl h-[calc(100vh-250px)] flex flex-col animate-pop-in">
+                            <!-- Ticket Header -->
+                            <div class="p-6 border-b border-slate-800 bg-slate-950/50 flex justify-between items-center">
+                                <div>
+                                    <h3 class="font-black text-lg text-emerald-400">Ticket #{{ ticket.id }}</h3>
+                                    <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Session: {{ ticket.session_key|slice:":12" }}...</p>
+                                </div>
+                                <div class="flex items-center gap-4">
+                                    <span class="text-[10px] font-black uppercase px-3 py-1 rounded-full border border-slate-700 text-slate-400">{{ ticket.status }}</span>
+                                </div>
+                            </div>
+
+                            <!-- Messages Area -->
+                            <div class="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-950/30 custom-scrollbar">
+                                {% for msg in ticket.messages.all %}
+                                <div class="flex {% if msg.sender_type == 'admin' %}justify-end{% else %}justify-start{% endif %}">
+                                    <div class="max-w-[70%] space-y-1">
+                                        <div class="p-4 rounded-2xl text-sm shadow-lg {% if msg.sender_type == 'admin' %}bg-emerald-600 text-white rounded-tr-none{% else %}bg-slate-800 text-slate-200 rounded-tl-none{% endif %}">
+                                            {{ msg.message }}
+                                            {% if msg.attachment %}
+                                            <div class="mt-2 pt-2 border-t border-white/10">
+                                                <a href="{{ msg.attachment.url }}" target="_blank" class="text-[10px] underline font-bold flex items-center gap-1 opacity-80 hover:opacity-100">
+                                                    📎 Attachment: {{ msg.attachment.name }}
+                                                </a>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="text-[9px] font-black uppercase text-slate-600 px-2">{{ msg.created_at|date:"H:i" }} · {{ msg.sender_type }}</div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+
+                            <!-- Admin Reply Form -->
+                            <div class="p-6 border-t border-slate-800 bg-slate-950/50">
+                                <form method="post" class="space-y-4">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="reply_ticket_admin">
+                                    <input type="hidden" name="ticket_id" value="{{ ticket.id }}">
+                                    
+                                    <div class="grid grid-cols-4 gap-4 items-end">
+                                        <div class="col-span-3">
+                                            <textarea name="message" rows="2" placeholder="Tulis balasan..." class="w-full px-4 py-3 rounded-2xl text-xs"></textarea>
+                                        </div>
+                                        <div class="col-span-1 space-y-2">
+                                            <select name="status" class="w-full px-3 py-2 text-[10px] font-black uppercase rounded-xl bg-slate-800 border-slate-700">
+                                                <option value="open" {% if ticket.status == 'open' %}selected{% endif %}>STAY OPEN</option>
+                                                <option value="closed" {% if ticket.status == 'closed' %}selected{% endif %}>CLOSE TICKET</option>
+                                            </select>
+                                            <button type="submit" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl text-[10px] uppercase tracking-widest transition-all">Reply</button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </template>
+                    {% endfor %}
+                    
+                    <!-- Placeholder -->
+                    <div x-show="!activeTicket" class="rounded-[30px] border-2 border-dashed border-slate-800 h-full flex flex-col items-center justify-center text-slate-600">
+                        <span class="text-4xl mb-4">🎫</span>
+                        <p class="font-black uppercase tracking-[0.2em] text-[10px]">Select a ticket to view conversation</p>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-    </div>
+    </main>
 </body>
 </html>

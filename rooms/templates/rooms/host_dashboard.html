@@ -53,8 +53,11 @@
                                 <span class="font-bold text-sm text-gray-200" x-text="p.name"
                                     :class="p.status === 'eliminated' ? 'line-through text-red-500' : ''"></span>
                             </div>
-                            <div x-show="p.status === 'eliminated'"
-                                class="text-[0.625rem] font-black text-red-500 uppercase tracking-tighter">ELIMINATED
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs font-black text-lebaran-400 bg-gray-900 px-2 py-1 rounded-lg border border-white/5" x-text="p.points || 0">0</span>
+                                <div x-show="p.status === 'eliminated'"
+                                    class="text-[0.625rem] font-black text-red-500 uppercase tracking-tighter">ELIMINATED
+                                </div>
                             </div>
                         </div>
                     </template>
@@ -162,6 +165,10 @@
                 class="w-full py-3 mt-2 bg-blue-600/20 text-blue-400 hover:text-white hover:bg-blue-600 border border-blue-500/30 rounded-lg font-black text-[10px] uppercase transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/5">
                 <span class="text-xs">📖</span> Host Tutorial
             </button>
+            <a href="/admin-dashboard/" target="_blank"
+                class="w-full py-3 mt-2 bg-slate-900 text-slate-400 hover:text-white border border-slate-700/50 rounded-lg font-black text-[10px] uppercase transition-all flex items-center justify-center gap-2">
+                <span class="text-xs">⚙️</span> System Admin Dashboard
+            </a>
         </div>
     </div>
 
@@ -205,10 +212,39 @@
                         <span class="text-lebaran-400">Waiting for family to enter the room...</span>
                     </p>
                     <button @click="$dispatch('open-host-guide')"
-                        class="mt-12 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white border-2 border-blue-500/30 px-10 py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-xl flex items-center gap-4 group">
+                        class="mt-8 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white border-2 border-blue-500/30 px-10 py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-xl flex items-center gap-4 group">
                         <span class="text-2xl group-hover:animate-bounce">📖</span>
                         LEARN HOW TO HOST
                     </button>
+
+                    <!-- LOBBY LEADERBOARD -->
+                    <div x-show="players.length > 0" class="mt-12 w-full max-w-4xl animate-pop-in" style="animation-delay: 200ms">
+                        <div class="flex items-center justify-center gap-4 mb-6">
+                            <div class="h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent flex-1"></div>
+                            <h3 class="text-sm font-black text-gray-400 uppercase tracking-[0.3em]">Live Standings</h3>
+                            <div class="h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent flex-1"></div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <template x-for="(p, index) in [...players].sort((a,b) => (b.points||0) - (a.points||0))" :key="p.id">
+                                <div class="bg-gray-800/40 backdrop-blur-md border border-white/5 p-4 rounded-3xl flex items-center gap-4 group hover:bg-gray-800/60 hover:border-lebaran-500/30 transition-all">
+                                    <div class="w-10 h-10 rounded-2xl flex items-center justify-center font-black text-lg relative overflow-hidden"
+                                        :class="index === 0 ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30' : (index === 1 ? 'bg-gray-300/20 text-gray-300 border border-gray-300/30' : (index === 2 ? 'bg-orange-500/20 text-orange-500 border border-orange-500/30' : 'bg-gray-700/20 text-gray-400 border border-white/5'))">
+                                        <span x-text="index + 1"></span>
+                                        <div x-show="index === 0" class="absolute -top-1 -right-1 text-[10px] animate-bounce">👑</div>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="text-sm font-black text-white truncate uppercase tracking-tight" x-text="p.name"></div>
+                                        <div class="flex items-center gap-1.5 mt-0.5">
+                                            <span class="text-xs font-black text-lebaran-400" x-text="(p.points || 0) + ' PTS'"></span>
+                                            <div class="w-1 h-1 rounded-full bg-gray-600"></div>
+                                            <span class="text-[10px] font-bold text-gray-500 uppercase tracking-tighter" x-text="p.status || 'Active'"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
                 </div>
 
                 <h2 x-show="gameState !== 'LOBBY'"
@@ -1061,20 +1097,20 @@
                                         class="text-[1.5vh] font-black text-blue-200 uppercase tracking-[0.4em] mb-6 drop-shadow-lg">
                                         🏆 WE HAVE A WINNER!</div>
                                     <h2 class="text-[6vh] font-black text-white italic leading-none tracking-tighter drop-shadow-2xl mb-8 break-words"
-                                        x-text="wheelResult.label"></h2>
+                                        x-text="wheelResult?.label || ''"></h2>
                                     <div
                                         class="flex items-center gap-6 bg-black/40 backdrop-blur-3xl p-6 lg:p-8 rounded-[35px] border border-white/10 shadow-xl max-w-full">
                                         <div
                                             class="w-16 h-16 lg:w-20 lg:h-20 rounded-full bg-white flex items-center justify-center shadow-lg flex-shrink-0">
                                             <span class="text-3xl lg:text-5xl font-black text-blue-700"
-                                                x-text="wheelResult.player_name ? wheelResult.player_name[0] : '?'"></span>
+                                                x-text="wheelResult?.player_name ? wheelResult.player_name[0] : '?'"></span>
                                         </div>
                                         <div class="text-left min-w-0">
                                             <div
                                                 class="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">
                                                 CLAIMED BY</div>
                                             <div class="text-4xl lg:text-6xl font-black text-white italic tracking-tighter truncate"
-                                                x-text="wheelResult.player_name"></div>
+                                                x-text="wheelResult?.player_name || ''"></div>
                                         </div>
                                     </div>
                                 </div>
@@ -1681,6 +1717,12 @@
                     else if (data.action === 'toast_broadcast') {
                         this.showToast(data.msg, data.icon || '🔔');
                     }
+                    else if (data.action === 'point_update') {
+                        const player = this.players.find(p => String(p.id) === String(data.player_id));
+                        if (player) {
+                            player.points = data.points;
+                        }
+                    }
                     else if (data.action === 'player_join') {
                         if (!this.players.find(p => p.id === data.player_id)) {
                             this.players.push({ id: data.player_id, name: data.player_name, status: 'Active' });
@@ -2124,8 +2166,13 @@
             },
             getVoteCount(id) { return this.votes ? Object.values(this.votes).filter(v => v == id).length : 0; },
             openAdmin() {
-                this.isAdminOpen = true;
-                this.socket.send(JSON.stringify({ action: 'admin_fetch_words' }));
+                const pass = prompt("Enter Admin Password:");
+                if (pass === 'admin123') {
+                    this.isAdminOpen = true;
+                    this.fetchAdminWords();
+                } else if (pass !== null) {
+                    alert("Incorrect password!");
+                }
             },
             addAdminWord() {
                 if (this.newWord.common && this.newWord.undercover) {

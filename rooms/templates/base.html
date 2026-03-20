@@ -7,6 +7,25 @@
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Lebaran Rush</title>
+    <meta name="description" content="Lebaran Rush - Main game seru bareng teman saat Lebaran! Nikmati mini game Undercover, Spin Wheel, dan mode permainan seru lainnya di hari yang fitri.">
+    <meta name="keywords" content="Lebaran Rush, game lebaran, undercover game, spin wheel, game seru, eid mubarak game, game keluarga">
+    <meta name="author" content="Zafirz">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://lebaranrush.zafirz.my.id/">
+    <meta property="og:title" content="Lebaran Rush - Game Seru Rayakan Lebaran">
+    <meta property="og:description" content="Main game seru bareng teman saat Lebaran! Nikmati mini game Undercover, Spin Wheel, dan mode permainan seru lainnya.">
+    <meta property="og:image" content="{% static 'images/eid_bg.png' %}">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://lebaranrush.zafirz.my.id/">
+    <meta property="twitter:title" content="Lebaran Rush - Game Seru Rayakan Lebaran">
+    <meta property="twitter:description" content="Main game seru bareng teman saat Lebaran! Nikmati mini game Undercover, Spin Wheel, dan mode permainan seru lainnya.">
+    <meta property="twitter:image" content="{% static 'images/eid_bg.png' %}">
+
+    <meta name="google-site-verification" content="google886842ad110356f8.html" />
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -215,82 +234,397 @@
         {% block content %}{% endblock %}
     </main>
 
-    <div x-data="helpBubble()" x-init="init()" class="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+    <!-- Modern Helpdesk Bubble -->
+    <div x-data="helpBubble()" x-init="init()" class="fixed bottom-6 right-6 md:right-10 z-50 flex flex-col items-center md:items-end">
+        <!-- Chat Window -->
         <div x-show="open" x-cloak 
              x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="opacity-0 scale-90 translate-y-4"
+             x-transition:enter-start="opacity-0 scale-95 translate-y-10"
              x-transition:enter-end="opacity-100 scale-100 translate-y-0"
              x-transition:leave="transition ease-in duration-200"
              x-transition:leave-start="opacity-100 scale-100 translate-y-0"
-             x-transition:leave-end="opacity-0 scale-90 translate-y-4"
-             class="mb-4 w-72 max-w-[85vw] bg-slate-900/98 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-4 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+             x-transition:leave-end="opacity-0 scale-95 translate-y-10"
+             class="mb-4 w-[calc(100vw-2rem)] md:w-96 max-w-[90vw] h-[500px] bg-slate-900 border border-slate-700/50 rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.7)] overflow-hidden flex flex-col">
             
-            <div class="flex justify-between items-start mb-3">
-                <p class="font-bold text-emerald-400 text-base leading-tight" x-text="greeting"></p>
-                <button @click="open = false" class="p-1 text-slate-500 hover:text-slate-300 transition-colors">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
-            </div>
-
-            <template x-if="selectedAnswer">
-                <div class="mb-3 text-xs text-slate-300 bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-xl relative animate-pop-in">
-                    <button @click="selectedAnswer = ''" class="absolute top-1 right-1 text-slate-500 hover:text-emerald-400 p-1">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                    </button>
-                    <div class="pr-4 font-medium" x-text="selectedAnswer"></div>
-                </div>
-            </template>
-
-            <div class="space-y-1.5 mb-4 max-h-48 overflow-y-auto custom-scrollbar pr-1">
-                <template x-for="option in options" :key="option.id">
-                    <button class="w-full text-left text-xs px-3 py-2.5 rounded-lg bg-slate-800/50 hover:bg-slate-700 border border-slate-700/50 hover:border-emerald-500/30 transition-all duration-200 group flex justify-between items-center" 
-                            @click="selectedAnswer = option.answer">
-                        <span x-text="option.title"></span>
-                        <svg class="w-3 h-3 text-slate-600 group-hover:text-emerald-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                    </button>
-                </template>
-            </div>
-
-            <div class="border-t border-slate-800 pt-3 text-[10px] text-slate-400">
-                <div class="space-y-1.5">
-                    <template x-for="contact in contacts" :key="contact.name + contact.value">
-                        <div class="flex justify-between items-center bg-slate-800/30 px-2 py-1.5 rounded-lg">
-                            <span class="text-slate-500 font-bold uppercase tracking-tighter" x-text="contact.name"></span>
-                            <span class="font-mono text-emerald-400/90" x-text="contact.value"></span>
+            <!-- Header -->
+            <div class="p-6 bg-gradient-to-br from-purple-600 to-indigo-700 shrink-0">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <button x-show="view !== 'main'" @click="backToMain" class="text-white/70 hover:text-white mr-1" x-cloak>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 19l-7-7 7-7"></path></svg>
+                            </button>
+                            <h3 class="text-white font-black text-xl italic tracking-tighter uppercase">Support Center</h3>
                         </div>
-                    </template>
+                        <p class="text-indigo-100 text-[10px] font-bold uppercase tracking-widest opacity-80" x-text="greeting"></p>
+                    </div>
+                    <button @click="open = false" class="p-2 text-white/50 hover:text-white transition-colors bg-white/10 rounded-full">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="flex-1 overflow-hidden bg-[#020617] flex flex-col relative">
+                
+                <!-- Staff Portal Link (Only for Staff) -->
+                {% if user.is_staff %}
+                <div class="px-4 py-2 bg-emerald-500/10 border-b border-emerald-500/20 flex justify-between items-center shrink-0">
+                    <span class="text-[9px] font-black text-emerald-400 uppercase tracking-widest">Staff Portal</span>
+                    <a href="{% url 'admin_dashboard' %}" target="_blank" class="text-[9px] font-black bg-emerald-500 text-slate-950 px-2 py-1 rounded-md uppercase hover:bg-emerald-400 transition-colors">Open Admin Dashboard</a>
+                </div>
+                {% endif %}
+
+                <!-- VIEW: MAIN MENU -->
+                <div x-show="view === 'main' || !view" x-transition.opacity class="p-4 space-y-4 overflow-y-auto custom-scrollbar h-full">
+                    <!-- Quick Stats/Info -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <button @click="view = 'faq'" class="p-4 bg-slate-800/50 border border-slate-700/50 rounded-2xl hover:bg-purple-500/10 hover:border-purple-500/30 transition-all text-left">
+                            <span class="text-xl block mb-1">📖</span>
+                            <span class="text-[10px] uppercase font-black text-slate-400 block tracking-wider">Bantuan</span>
+                            <span class="text-xs font-bold text-white">FAQ & Guide</span>
+                        </button>
+                        <button @click="openNewTicket" class="p-4 bg-slate-800/50 border border-slate-700/50 rounded-2xl hover:bg-purple-500/10 hover:border-purple-500/30 transition-all text-left">
+                            <span class="text-xl block mb-1">🎧</span>
+                            <span class="text-[10px] uppercase font-black text-slate-400 block tracking-wider">Admin</span>
+                            <span class="text-xs font-bold text-white">Contact Admin</span>
+                        </button>
+                    </div>
+
+                    <!-- My Tickets List Preview -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center px-1">
+                            <p class="text-[10px] uppercase font-black text-slate-500 tracking-widest">Tiket Saya</p>
+                            <span x-show="myTickets.length > 0" class="text-[8px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full font-bold uppercase" x-text="myTickets.length + ' Tiket'"></span>
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <template x-for="t in myTickets" :key="t.id">
+                                <button @click="openChat(t.id)" class="w-full bg-slate-800/30 border border-slate-700/50 p-3 rounded-2xl flex items-center gap-3 hover:bg-slate-800 transition-all text-left">
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0" :class="t.status === 'open' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-400'">
+                                        #<span x-text="t.id"></span>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex justify-between items-center mb-0.5">
+                                            <span class="text-[10px] font-black uppercase" :class="t.status === 'open' ? 'text-emerald-400' : 'text-slate-500'" x-text="t.status"></span>
+                                            <span class="text-[8px] text-slate-600 font-bold" x-text="formatDate(t.created_at)"></span>
+                                        </div>
+                                        <p class="text-xs text-slate-300 font-medium truncate" x-text="t.last_message || 'Belum ada pesan'"></p>
+                                    </div>
+                                </button>
+                            </template>
+                            
+                            <div x-show="myTickets.length === 0" class="text-center py-8 border-2 border-dashed border-slate-800 rounded-2xl">
+                                <p class="text-[10px] font-black text-slate-600 uppercase tracking-widest">Belum ada tiket bantuan</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VIEW: FAQ -->
+                <div x-show="view === 'faq'" x-transition class="p-4 space-y-4 overflow-y-auto custom-scrollbar h-full">
+                    <div class="space-y-2">
+                        <template x-for="option in options" :key="option.id">
+                            <div x-data="{ open: false }" class="bg-slate-800/30 border border-slate-700/50 rounded-2xl overflow-hidden">
+                                <button @click="open = !open" class="w-full text-left p-4 flex justify-between items-center group transition-all">
+                                    <span class="text-xs font-bold text-slate-200 group-hover:text-purple-400" x-text="option.title"></span>
+                                    <svg class="w-4 h-4 text-slate-600 group-hover:text-purple-400 transition-all" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                <div x-show="open" x-transition class="px-4 pb-4 animate-pop-in">
+                                    <div class="pt-2 border-t border-slate-700/30 text-[11px] text-slate-400 leading-relaxed font-medium" x-html="option.answer"></div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- VIEW: NEW TICKET FORM -->
+                <div x-show="view === 'new_ticket'" x-transition class="p-6 space-y-4 overflow-y-auto h-full">
+                    <h4 class="text-xs font-black uppercase text-purple-400 tracking-widest mb-2">Create New Ticket</h4>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-[10px] uppercase font-black text-slate-500 tracking-wider mb-2 block">Phone Number (Optional)</label>
+                            <input type="text" x-model="ticketForm.phone" placeholder="0812..." class="w-full bg-slate-800 border-none rounded-xl px-4 py-3 text-xs text-white focus:ring-2 ring-purple-500 transition-all">
+                        </div>
+                        <div>
+                            <label class="text-[10px] uppercase font-black text-slate-500 tracking-wider mb-2 block">Issue Description</label>
+                            <textarea x-model="ticketForm.description" rows="4" placeholder="Describe your problem clearly..." class="w-full bg-slate-800 border-none rounded-xl px-4 py-3 text-xs text-white focus:ring-2 ring-purple-500 transition-all"></textarea>
+                        </div>
+                        <div>
+                            <label class="text-[10px] uppercase font-black text-slate-500 tracking-wider mb-2 block">Attachment (Optional)</label>
+                            <div class="relative h-12 bg-slate-800 rounded-xl overflow-hidden hover:bg-slate-700 transition-colors border border-dashed border-slate-700 cursor-pointer flex items-center justify-center gap-2">
+                                <input type="file" @change="handleFileUpload($event, 'ticketForm')" class="absolute inset-0 opacity-0 cursor-pointer">
+                                <span class="text-xs font-bold text-slate-400" x-text="ticketForm.attachment ? ticketForm.attachment.name : 'Choose File...'"></span>
+                            </div>
+                        </div>
+                        <button @click="submitTicket" :disabled="loading || !ticketForm.description" class="w-full py-4 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:bg-slate-800 text-white font-black rounded-2xl uppercase tracking-widest text-xs transition-all shadow-lg shadow-purple-600/20">
+                            <span x-show="!loading">Submit Support Ticket</span>
+                            <span x-show="loading">Submitting...</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- VIEW: TICKET CHAT -->
+                <div x-show="view === 'ticket_chat'" x-transition class="flex flex-col h-full overflow-hidden">
+                    <!-- Messages area -->
+                    <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-[#0a1024]">
+                        <template x-for="msg in activeTicket?.messages" :key="msg.created_at">
+                            <div class="flex" :class="msg.sender === 'user' ? 'justify-end' : 'justify-start'">
+                                <div class="max-w-[80%] space-y-1">
+                                    <div class="p-3 rounded-2xl text-xs font-medium shadow-sm transition-all"
+                                         :class="msg.sender === 'user' ? 'bg-purple-600 text-white rounded-tr-none' : 'bg-slate-800 text-slate-200 rounded-tl-none'">
+                                        <p x-text="msg.message"></p>
+                                        <template x-if="msg.attachment">
+                                            <a :href="msg.attachment" target="_blank" class="block mt-2 p-2 bg-black/20 rounded-lg text-[10px] font-bold underline hover:no-underline truncate">
+                                                <span>📎</span> <span x-text="getFileName(msg.attachment)"></span>
+                                            </a>
+                                        </template>
+                                    </div>
+                                    <div class="text-[8px] font-black uppercase tracking-tighter text-slate-500 px-1" x-text="formatTime(msg.created_at)"></div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Input area -->
+                    <div class="p-3 bg-slate-900 border-t border-slate-800">
+                        <div x-show="activeTicket?.status === 'closed'" class="text-center py-2 bg-rose-500/10 rounded-xl mb-2">
+                            <p class="text-[9px] font-black text-rose-500 uppercase tracking-widest">This ticket is closed</p>
+                        </div>
+                        <div class="flex items-end gap-2" x-show="activeTicket?.status !== 'closed'">
+                            <div class="flex-1 bg-slate-800 rounded-2xl p-1 pr-3 flex items-center group focus-within:ring-1 ring-purple-500/50">
+                                <div class="relative w-8 h-8 flex-shrink-0">
+                                    <input type="file" @change="handleFileUpload($event, 'reply')" class="absolute inset-0 opacity-0 cursor-pointer z-10">
+                                    <button class="w-full h-full flex items-center justify-center text-slate-500 hover:text-purple-400">
+                                        <svg class="w-4 h-4" :class="replyAttachment ? 'text-emerald-400' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                                    </button>
+                                </div>
+                                <input type="text" x-model="replyMsg" @keydown.enter="sendReply" placeholder="Write a reply..." class="flex-1 bg-transparent border-none text-xs text-white focus:ring-0 placeholder:text-slate-600 py-2">
+                                <button @click="sendReply" class="text-purple-500 hover:text-purple-400 transition-colors p-1" :disabled="!replyMsg && !replyAttachment">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div x-show="replyAttachment" class="mt-2 px-2 flex justify-between items-center text-[9px] font-bold text-emerald-400 bg-emerald-500/5 py-1.5 rounded-lg border border-emerald-500/10">
+                            <span class="truncate" x-text="'📎 ' + replyAttachment?.name"></span>
+                            <button @click="replyAttachment = null" class="text-slate-500 hover:text-rose-500 ml-2">Remove</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <button @click="open = !open" 
-                class="bg-emerald-500 hover:bg-emerald-400 text-slate-900 w-12 h-12 rounded-full shadow-[0_10px_30px_rgba(16,185,129,0.3)] flex items-center justify-center transform active:scale-90 transition-all duration-300 group overflow-hidden">
-            <span x-show="!open" class="text-xl group-hover:scale-110 transition-transform duration-300">💬</span>
-            <svg x-show="open" class="w-6 h-6 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-        </button>
+        <!-- Floating Action Button -->
+        <div class="relative group">
+            <div x-show="hasUnread" class="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 border-2 border-slate-900 rounded-full z-20 animate-bounce flex items-center justify-center">
+                <span class="text-[8px] font-black text-white">!</span>
+            </div>
+
+            <div class="absolute right-full mr-4 top-1/2 -translate-y-1/2 px-4 py-2 bg-white text-slate-900 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0 transition-all hidden md:block">
+                <span x-text="bubbleLabel"></span>
+                <div class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-2 h-2 bg-white rotate-45"></div>
+            </div>
+
+            <div x-show="!open" class="absolute inset-0 bg-purple-500 rounded-full animate-ping opacity-20 group-hover:opacity-0 transition-opacity"></div>
+            
+            <button @click="open = !open" 
+                    :class="open ? 'bg-slate-800 rotate-90' : 'bg-purple-600'"
+                    class="relative w-14 h-14 rounded-full shadow-[0_15px_30px_-5px_rgba(147,51,234,0.4)] flex items-center justify-center transform active:scale-90 transition-all duration-500 z-10 overflow-hidden">
+                <template x-if="!open">
+                    <svg class="w-6 h-6 text-white group-hover:scale-110 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                    </svg>
+                </template>
+                <template x-if="open">
+                    <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </template>
+            </button>
+        </div>
     </div>
 
     <script>
         function helpBubble() {
             return {
                 open: false,
+                view: 'main',
                 bubbleLabel: 'Butuh bantuan?',
                 greeting: 'Halo! Ada yang bisa kami bantu?',
                 options: [],
                 contacts: [],
-                selectedAnswer: '',
+                myTickets: [],
+                activeTicket: null,
+                ticketForm: { phone: '', description: '', attachment: null },
+                replyMsg: '',
+                replyAttachment: null,
+                loading: false,
+                hasUnread: false,
+                chatInterval: null,
+
                 async init() {
                     try {
                         const res = await fetch('/helpbot/data/');
-                        if (!res.ok) return;
-                        const data = await res.json();
-                        this.bubbleLabel = data.bubble_label || this.bubbleLabel;
-                        this.greeting = data.greeting || this.greeting;
-                        this.options = data.options || [];
-                        this.contacts = data.contacts || [];
+                        if (res.ok) {
+                            const data = await res.json();
+                            this.bubbleLabel = data.bubble_label || this.bubbleLabel;
+                            this.greeting = data.greeting || this.greeting;
+                            this.options = data.options || [];
+                            this.contacts = data.contacts || [];
+                        }
+                        this.fetchMyTickets();
                     } catch (e) {
                         console.error('Help bubble unavailable', e);
                     }
+                },
+
+                backToMain() {
+                    this.view = 'main';
+                    this.stopChatPolling();
+                },
+
+                openNewTicket() {
+                    this.view = 'new_ticket';
+                    this.ticketForm = { phone: '', description: '', attachment: null };
+                },
+
+                async fetchMyTickets() {
+                    try {
+                        const res = await fetch('/help/ticket/my/');
+                        if (res.ok) {
+                            const data = await res.json();
+                            this.myTickets = data.tickets || [];
+                        }
+                    } catch (e) {}
+                },
+
+                async submitTicket() {
+                    if (!this.ticketForm.description) return;
+                    this.loading = true;
+                    
+                    const formData = new FormData();
+                    formData.append('phone', this.ticketForm.phone);
+                    formData.append('description', this.ticketForm.description);
+                    if (this.ticketForm.attachment) {
+                        formData.append('attachment', this.ticketForm.attachment);
+                    }
+
+                    try {
+                        const res = await fetch('/help/ticket/create/', {
+                            method: 'POST',
+                            body: formData,
+                            headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+                        });
+                        const data = await res.json();
+                        if (data.status === 'ok') {
+                            await this.fetchMyTickets();
+                            this.openChat(data.ticket_id);
+                        }
+                    } catch (e) {
+                        alert('Submission failed. Please try again.');
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                async openChat(ticketId) {
+                    this.view = 'ticket_chat';
+                    this.loading = true;
+                    this.hasUnread = false; // Clear unread when entering chat
+                    await this.fetchMessages(ticketId);
+                    this.loading = false;
+                    this.startChatPolling(ticketId);
+                    this.$nextTick(() => this.scrollToBottom());
+                },
+
+                async fetchMessages(ticketId) {
+                    try {
+                        const res = await fetch(`/help/ticket/${ticketId}/messages/`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            const oldLen = this.activeTicket ? this.activeTicket.messages.length : 0;
+                            this.activeTicket = {
+                                id: ticketId,
+                                status: data.status,
+                                messages: data.messages
+                            };
+                            
+                            // Check for unread if chat window is closed but polling is active 
+                            // (e.g. if user had it open but then minimized)
+                            if (!this.open && data.messages.length > oldLen) {
+                                const last = data.messages[data.messages.length - 1];
+                                if (last.sender === 'admin') this.hasUnread = true;
+                            }
+                        }
+                    } catch (e) {}
+                },
+
+                startChatPolling(ticketId) {
+                    this.stopChatPolling();
+                    this.chatInterval = setInterval(() => {
+                        this.fetchMessages(ticketId);
+                    }, 5000);
+                },
+
+                stopChatPolling() {
+                    if (this.chatInterval) clearInterval(this.chatInterval);
+                },
+
+                async sendReply() {
+                    if (!this.replyMsg && !this.replyAttachment) return;
+                    if (!this.activeTicket) return;
+
+                    const formData = new FormData();
+                    formData.append('message', this.replyMsg);
+                    if (this.replyAttachment) {
+                        formData.append('attachment', this.replyAttachment);
+                    }
+
+                    const tempId = this.activeTicket.id;
+                    const tempMsg = this.replyMsg;
+                    
+                    this.replyMsg = '';
+                    this.replyAttachment = null;
+
+                    try {
+                        const res = await fetch(`/help/ticket/${tempId}/reply/`, {
+                            method: 'POST',
+                            body: formData,
+                            headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+                        });
+                        if (res.ok) {
+                            await this.fetchMessages(tempId);
+                            this.$nextTick(() => this.scrollToBottom());
+                        }
+                    } catch (e) {
+                        this.replyMsg = tempMsg; // restore
+                    }
+                },
+
+                handleFileUpload(e, target) {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    if (target === 'ticketForm') this.ticketForm.attachment = file;
+                    else if (target === 'reply') this.replyAttachment = file;
+                },
+
+                getFileName(url) {
+                    return url.split('/').pop();
+                },
+
+                formatDate(dateStr) {
+                    const d = new Date(dateStr);
+                    return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
+                },
+
+                formatTime(dateStr) {
+                    const d = new Date(dateStr);
+                    return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                },
+
+                scrollToBottom() {
+                    const log = document.getElementById('chat-messages');
+                    if (log) log.scrollTop = log.scrollHeight;
                 }
             }
         }

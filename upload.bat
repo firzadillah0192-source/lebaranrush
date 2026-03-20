@@ -7,3 +7,4 @@ git commit -m "%msg%"
 git push origin main
 echo Selesai! Perubahan sudah ada di GitHub.
 pause
+

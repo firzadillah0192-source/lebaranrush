@@ -525,13 +525,13 @@ def transition_to(room_code, new_state, state_data=None, timer=None, force=False
         if is_undercover_caught:
             for p in players:
                 if str(p.id) != undercover_id:
-                    p.points += 20
+                    p.points += 10
                     p.save()
         else:
             if undercover_id:
                 try:
                     u = Player.objects.get(id=undercover_id)
-                    u.points += 50
+                    u.points += 10
                     u.save()
                 except Player.DoesNotExist: pass
         
